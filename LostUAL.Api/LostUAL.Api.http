@@ -1,0 +1,6 @@
+@LostUAL.Api_HostAddress = http://localhost:5233
+
+GET {{LostUAL.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
