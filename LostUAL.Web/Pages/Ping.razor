@@ -1,0 +1,22 @@
+﻿@page "/ping"
+@inject HttpClient Http
+
+<h3>Ping API</h3>
+
+@if (result is null)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <pre>@result</pre>
+}
+
+@code {
+    private string? result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        result = await Http.GetStringAsync("api/ping");
+    }
+}

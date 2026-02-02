@@ -1,0 +1,38 @@
+﻿@page "/posts"
+@inject HttpClient Http
+@using LostUAL.Contracts.Posts
+
+<h3>Posts (demo)</h3>
+
+@if (items is null)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var p in items)
+        {
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between">
+                    <strong>@p.Title</strong>
+                    <span class="badge bg-secondary">@p.Type</span>
+                </div>
+                <small>@p.Category · @p.Location · @p.DateApprox</small>
+                <div>
+                    <span class="badge bg-info">@p.Status</span>
+                    <small class="text-muted ms-2">@p.CreatedAtUtc</small>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<PostListItemDto>? items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        items = await Http.GetFromJsonAsync<List<PostListItemDto>>("api/posts");
+    }
+}
