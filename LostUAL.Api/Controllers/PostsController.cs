@@ -35,6 +35,36 @@ public class PostsController : ControllerBase
 
         return Ok(items);
     }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<PostDetailDto>> GetById(int id)
+    {
+        var item = await _db.Posts
+            .AsNoTracking()
+            .Where(p => p.Id == id)
+            .Include(p => p.Category)
+            .Include(p => p.Location)
+            .Select(p => new PostDetailDto(
+                p.Id,
+                p.Type,
+                p.Title,
+                p.Description,
+                p.CategoryId,
+                p.Category!.Name,
+                p.LocationId,
+                p.Location!.Name,
+                p.DateApprox,
+                p.Status,
+                p.CreatedAtUtc
+            ))
+            .SingleOrDefaultAsync();
+
+        if (item is null) return NotFound();
+
+        return Ok(item);
+    }
+
+
     [HttpPost]
     public async Task<ActionResult<PostListItemDto>> Create(CreatePostRequest request)
     {
@@ -79,6 +109,7 @@ public class PostsController : ControllerBase
             .SingleAsync();
 
         // 4) Devuelve 201 + Location header
-        return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+
     }
 }

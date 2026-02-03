@@ -15,7 +15,9 @@ else
         {
             <div class="list-group-item">
                 <div class="d-flex justify-content-between">
-                    <strong>@p.Title</strong>
+                    <NavLink href="@($"posts/{p.Id}")" class="text-decoration-none">
+                        <strong>@p.Title</strong>
+                    </NavLink>
                     <span class="badge bg-secondary">@p.Type</span>
                 </div>
                 <small>@p.Category · @p.Location · @p.DateApprox</small>

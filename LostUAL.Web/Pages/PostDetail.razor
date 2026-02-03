@@ -1,0 +1,71 @@
+﻿@page "/posts/{Id:int}"
+@inject HttpClient Http
+@using LostUAL.Contracts.Posts
+@using System.Net
+
+<h3>Detalle del post</h3>
+
+@if (loading)
+{
+    <p>Cargando...</p>
+}
+else if (notFound)
+{
+    <div class="alert alert-warning">No existe ese post.</div>
+}
+else if (post is not null)
+{
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="card-title mb-1">@post.Title</h5>
+                    <div class="text-muted small">
+                        @post.Category · @post.Location · @post.DateApprox
+                    </div>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-secondary me-1">@post.Type</span>
+                    <span class="badge bg-info">@post.Status</span>
+                </div>
+            </div>
+
+            <hr />
+
+            <p class="mb-2">@post.Description</p>
+
+            <div class="text-muted small">
+                Creado: @post.CreatedAtUtc
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool loading = true;
+    private bool notFound = false;
+    private PostDetailDto? post;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        notFound = false;
+        post = null;
+
+        try
+        {
+            post = await Http.GetFromJsonAsync<PostDetailDto>($"api/posts/{Id}");
+            if (post is null) notFound = true;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            notFound = true;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

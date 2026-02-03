@@ -32,3 +32,17 @@ public sealed record CreatePostRequest(
     int LocationId,
     DateOnly DateApprox
 );
+
+public sealed record PostDetailDto(
+    int Id,
+    PostType Type,
+    string Title,
+    string Description,
+    int CategoryId,
+    string Category,
+    int LocationId,
+    string Location,
+    DateOnly DateApprox,
+    PostStatus Status,
+    DateTime CreatedAtUtc
+);
