@@ -2,10 +2,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using LostUAL.Data.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace LostUAL.Data.Persistence;
 
-public class LostUALDbContext : DbContext
+public class LostUALDbContext : IdentityDbContext<ApplicationUser>
 {
     public LostUALDbContext(DbContextOptions<LostUALDbContext> options) : base(options) { }
 
