@@ -6,5 +6,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Compile Remove="Conversations\**" />
+    <EmbeddedResource Remove="Conversations\**" />
+    <None Remove="Conversations\**" />
+  </ItemGroup>
+
 
 </Project>

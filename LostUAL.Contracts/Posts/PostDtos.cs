@@ -10,7 +10,8 @@ public enum PostStatus
 {
     Open = 0,
     InClaim = 1,
-    Closed = 2
+    Resolved = 2,
+    Closed = 3
 }
 
 public sealed record PostListItemDto(

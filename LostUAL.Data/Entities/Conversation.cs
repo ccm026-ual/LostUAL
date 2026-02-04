@@ -1,0 +1,17 @@
+﻿using LostUAL.Contracts.Chat;
+
+namespace LostUAL.Data.Entities;
+
+public class Conversation
+{
+    public int Id { get; set; }
+
+    public int ClaimId { get; set; }
+    public Claim? Claim { get; set; }
+
+    public ConversationStatus Status { get; set; } = ConversationStatus.Active;
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public List<Message> Messages { get; set; } = new();
+}

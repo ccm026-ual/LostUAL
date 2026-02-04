@@ -12,6 +12,13 @@ public class LostUALDbContext : DbContext
     public DbSet<ItemPost> Posts => Set<ItemPost>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<CampusLocation> Locations => Set<CampusLocation>();
+    public DbSet<Claim> Claims => Set<Claim>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<Message> Messages => Set<Message>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<Report> Reports => Set<Report>();
+
+
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -41,5 +48,47 @@ public class LostUALDbContext : DbContext
         modelBuilder.Entity<CampusLocation>()
             .HasIndex(l => l.Name)
             .IsUnique();
+
+        // Post -> Claims (1:N)
+        modelBuilder.Entity<ItemPost>()
+            .HasMany(p => p.Claims)
+            .WithOne(c => c.Post)
+            .HasForeignKey(c => c.PostId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Claim -> Conversation (1:1)
+        modelBuilder.Entity<Claim>()
+            .HasOne(c => c.Conversation)
+            .WithOne(conv => conv.Claim)
+            .HasForeignKey<Conversation>(conv => conv.ClaimId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Conversation -> Messages (1:N)
+        modelBuilder.Entity<Conversation>()
+            .HasMany(c => c.Messages)
+            .WithOne(m => m.Conversation)
+            .HasForeignKey(m => m.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ItemPost>()
+            .HasOne<Claim>()
+            .WithMany()
+            .HasForeignKey(p => p.WinningClaimId)
+            .OnDelete(DeleteBehavior.NoAction);
+        
+        modelBuilder.Entity<Claim>()
+            .HasIndex(c => new { c.PostId, c.Status });
+
+        modelBuilder.Entity<Message>()
+            .HasIndex(m => new { m.ConversationId, m.CreatedAtUtc });
+
+        modelBuilder.Entity<Notification>()
+            .HasIndex(n => new { n.UserId, n.ReadAtUtc });
+
+        modelBuilder.Entity<Report>()
+            .HasIndex(r => new { r.PostId, r.CreatedAtUtc });
+
+        modelBuilder.Entity<ItemPost>()
+            .HasIndex(p => new { p.Status, p.CreatedAtUtc });
     }
 }
