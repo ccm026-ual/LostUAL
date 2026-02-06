@@ -1,0 +1,83 @@
+﻿@page "/whoami"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Net.Http.Json
+@inject HttpClient Http
+
+<PageTitle>WhoAmI</PageTitle>
+
+<h3>WhoAmI</h3>
+
+<AuthorizeView>
+    <Authorized>
+        <p>Autenticado. Probando API: <code>/api/test/whoami</code></p>
+
+        <button class="btn btn-outline-primary" @onclick="Load" disabled="@_loading">
+            @(_loading ? "Cargando..." : "Recargar")
+        </button>
+
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="alert alert-danger mt-3">@_error</div>
+        }
+
+        @if (_data is not null)
+        {
+            <div class="mt-3">
+                <p><b>UserId:</b> <code>@_data.UserId</code></p>
+                <p><b>Email:</b> @_data.Email</p>
+                <p><b>Roles:</b> @string.Join(", ", _data.Roles ?? Array.Empty<string>())</p>
+            </div>
+        }
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private bool _loading;
+    private string? _error;
+    private WhoAmIResponse? _data;
+
+    protected override async Task OnInitializedAsync()
+        => await Load();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _error = null;
+        _data = null;
+
+        try
+        {
+            var resp = await Http.GetAsync("/api/test/whoami");
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                _error = "401 Unauthorized: el token no es válido o no está llegando.";
+                return;
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = $"Error: {(int)resp.StatusCode} {resp.ReasonPhrase}";
+                return;
+            }
+
+            _data = await resp.Content.ReadFromJsonAsync<WhoAmIResponse>();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class WhoAmIResponse
+    {
+        public string? UserId { get; set; }
+        public string? Email { get; set; }
+        public string[]? Roles { get; set; }
+    }
+}

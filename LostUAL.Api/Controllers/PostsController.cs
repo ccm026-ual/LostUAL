@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace LostUAL.Api.Controllers;
 
@@ -38,7 +39,7 @@ public class PostsController : ControllerBase
         return Ok(items);
     }
 
-    [HttpGet("{id:int}")]
+    [HttpGet("{id:guid}")]
     public async Task<ActionResult<PostDetailDto>> GetById(int id)
     {
         var item = await _db.Posts
@@ -74,6 +75,7 @@ public class PostsController : ControllerBase
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
             return Unauthorized();
+
         // 1) Validación mínima (evita FK inválidas)
         var categoryExists = await _db.Categories.AnyAsync(c => c.Id == request.CategoryId);
         var locationExists = await _db.Locations.AnyAsync(l => l.Id == request.LocationId);
@@ -119,4 +121,38 @@ public class PostsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
 
     }
+    [Authorize]
+    [HttpGet("mine")]
+    public async Task<IActionResult> GetMine(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        /*var total = await _db.Posts.CountAsync(ct);
+        var mine = await _db.Posts.CountAsync(p => p.CreatedByUserId == userId, ct);
+        var dbPath = _db.Database.GetDbConnection().DataSource;
+
+        return Ok(new { userId, total, mine, dbPath });*/
+
+
+        var myPosts = await _db.Posts
+            .AsNoTracking()
+            .Where(p => p.CreatedByUserId == userId)
+            .OrderByDescending(p => p.CreatedAtUtc) 
+            .Select(p => new {
+                p.Id,
+                p.Title,
+                p.Description,
+                p.Type,
+                p.Status,
+                p.CategoryId,
+                p.LocationId,
+                p.CreatedAtUtc
+            })
+            .ToListAsync(ct);
+
+        return Ok(myPosts);
+    }
+
 }

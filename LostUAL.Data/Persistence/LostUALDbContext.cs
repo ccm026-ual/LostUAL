@@ -38,9 +38,7 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
             d => DateOnly.FromDayNumber(d.DayNumber)
         );
 
-        modelBuilder.Entity<ItemPost>()
-            .Property(p => p.CreatedByUserId)
-            .HasMaxLength(450); 
+    
         modelBuilder.Entity<ItemPost>()
             .Property(p => p.DateApprox)
             .HasConversion(dateOnlyConverter)

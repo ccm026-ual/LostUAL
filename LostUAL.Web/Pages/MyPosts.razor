@@ -1,0 +1,84 @@
+﻿@page "/my-posts"
+@attribute [Authorize]
+@using System.Net.Http.Json
+@inject HttpClient Http
+@using LostUAL.Contracts.Posts
+
+
+<h3>Mis posts</h3>
+
+@if (_loading)
+{
+    <p>Cargando...</p>
+}
+else if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_posts.Count == 0)
+{
+    <p>No has publicado nada todavía.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Titulo</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Creado</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in _posts)
+            {
+                <tr>
+                    <td>@p.Title</td>
+                    <td>@p.Type</td>
+                    <td>@p.Status</td>
+                    <td>@(p.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool _loading = true;
+    private string? _error;
+    private List<MyPostDto> _posts = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _posts = await Http.GetFromJsonAsync<List<MyPostDto>>("/api/posts/mine")
+                     ?? new List<MyPostDto>();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class MyPostDto
+    {
+        public int Id { get; set; }             
+        public string? Title { get; set; }
+        public string? Description { get; set; }
+
+        public PostType Type { get; set; }            
+        public PostStatus Status { get; set; }          
+
+        public int CategoryId { get; set; }
+        public int LocationId { get; set; }
+
+        public DateTime CreatedAtUtc { get; set; }  
+    }
+
+}

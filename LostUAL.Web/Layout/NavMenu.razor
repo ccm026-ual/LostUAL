@@ -33,10 +33,18 @@
             <NavLink class="nav-link" href="posts">
                 <span class="oi oi-list-rich" aria-hidden="true"></span> Posts
             </NavLink>
-            <NavLink class="nav-link" href="new-post">
-                <span class="oi oi-plus" aria-hidden="true"></span> Nuevo post
-            </NavLink>
+            <AuthorizeView>
+                <Authorized>
+                    <NavLink class="nav-link" href="new-post">
+                        <span class="oi oi-plus" aria-hidden="true"></span> Nuevo post
+                    </NavLink>
+                </Authorized>
+            </AuthorizeView>
         </div>
+        <NavLink class="nav-link" href="whoami">
+            <span class="oi oi-person" aria-hidden="true"></span> WhoAmI
+        </NavLink>
+
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
@@ -53,6 +61,13 @@
                     </NavLink>
                 </div>
             </NotAuthorized>
+        </AuthorizeView>
+        <AuthorizeView>
+            <Authorized>
+                <NavLink class="nav-link" href="my-posts">
+                    <span class="oi oi-person" aria-hidden="true"></span> Mis posts
+                </NavLink>
+            </Authorized>
         </AuthorizeView>
 
     </nav>
