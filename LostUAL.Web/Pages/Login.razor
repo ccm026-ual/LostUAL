@@ -28,6 +28,12 @@
         @(_busy ? "Entrando..." : "Entrar")
     </button>
 
+    <div class="mt-3">
+        <span>¿No tienes cuenta?</span>
+        <a href="register">Crear cuenta</a>
+    </div>
+
+
     @code {
         private static readonly Dictionary<string, object> _disabledAttr =
         new() { ["disabled"] = "disabled" };

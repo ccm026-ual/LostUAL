@@ -32,5 +32,20 @@ public sealed class AuthService
         return (true, null);
     }
 
+    public async Task<(bool Ok, string? Error)> RegisterAsync(string email, string password)
+    {
+        var resp = await _http.PostAsJsonAsync("/api/Auth/register",
+            new RegisterRequest { Email = email, Password = password });
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            var body = await resp.Content.ReadAsStringAsync();
+            return (false, $"Registro falló: {(int)resp.StatusCode} {resp.ReasonPhrase}. {body}");
+        }
+
+        return (true, null);
+    }
+
+
     public Task LogoutAsync() => _authState.ClearTokenAsync();
 }

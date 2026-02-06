@@ -1,0 +1,89 @@
+﻿@page "/register"
+@using System.ComponentModel.DataAnnotations
+@inject LostUAL.Web.Auth.AuthService Auth
+@inject NavigationManager Nav
+
+<h3>Registro</h3>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+@if (!string.IsNullOrWhiteSpace(_success))
+{
+    <div class="alert alert-success">@_success</div>
+}
+
+<EditForm Model="_model" OnValidSubmit="DoRegister">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText class="form-control" @bind-Value="_model.Email" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <InputText class="form-control" type="password" @bind-Value="_model.Password" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Confirmar password</label>
+        <InputText class="form-control" type="password" @bind-Value="_model.ConfirmPassword" />
+    </div>
+
+    <button class="btn btn-primary" type="submit" disabled="@_busy">
+        @(_busy ? "Creando..." : "Crear cuenta")
+    </button>
+
+    <button class="btn btn-link" type="button" @onclick="@(() => Nav.NavigateTo("/login"))">
+        Volver a login
+    </button>
+</EditForm>
+
+@code {
+    private readonly RegisterVm _model = new();
+    private bool _busy;
+    private string? _error;
+    private string? _success;
+
+    private async Task DoRegister()
+    {
+        _busy = true;
+        _error = null;
+        _success = null;
+
+        if (_model.Password != _model.ConfirmPassword)
+        {
+            _error = "Las contraseñas no coinciden.";
+            _busy = false;
+            return;
+        }
+
+        var (ok, error) = await Auth.RegisterAsync(_model.Email, _model.Password);
+
+        _busy = false;
+
+        if (!ok)
+        {
+            _error = error;
+            return;
+        }
+
+        _success = "Cuenta creada. Ya puedes iniciar sesión.";
+        Nav.NavigateTo("/login");
+    }
+
+    private sealed class RegisterVm
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = "";
+
+        [Required, MinLength(6)]
+        public string Password { get; set; } = "";
+
+        [Required]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

@@ -1,7 +1,11 @@
 ﻿@page "/posts/{Id:int}"
 @inject HttpClient Http
+@using Microsoft.AspNetCore.Components.Authorization
 @using LostUAL.Contracts.Posts
 @using System.Net
+@using System.Security.Claims
+@using System.Net.Http.Json
+@inject AuthenticationStateProvider AuthStateProvider
 
 <h3>Detalle del post</h3>
 
@@ -23,6 +27,35 @@ else if (post is not null)
                     <div class="text-muted small">
                         @post.Category · @post.Location · @post.DateApprox
                     </div>
+                    <div class="mb-3 d-flex gap-2 align-items-center">
+
+                        @* Owner: solo puede cerrar si está Open *@
+                        @if (post.Status == PostStatus.Open && post.CreatedByUserId == _myUserId)
+                        {
+                            <button class="btn btn-warning" @onclick='() => ClosePostAsync("Owner closed")' disabled="@_closing">
+                                @(_closing ? "Cerrando..." : "Cerrar post")
+                            </button>
+                        }
+
+                        @* Admin/Moderator: puede cerrar en Open y en InClaim *@
+                        <AuthorizeView Roles="Admin,Moderator">
+                            <Authorized>
+                                @if (post.Status == PostStatus.Open || post.Status == PostStatus.InClaim)
+                                {
+                                    <button class="btn btn-warning" @onclick='() => ClosePostAsync("Moderation closed")' disabled="@_closing">
+                                        @(_closing ? "Cerrando..." : "Cerrar (moderación)")
+                                    </button>
+                                }
+                            </Authorized>
+                        </AuthorizeView>
+
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(_closeError))
+                    {
+                        <div class="alert alert-danger mt-2">@_closeError</div>
+                    }
+
                 </div>
                 <div class="text-end">
                     <span class="badge bg-secondary me-1">@post.Type</span>
@@ -39,6 +72,7 @@ else if (post is not null)
             </div>
         </div>
     </div>
+
 }
 
 @code {
@@ -47,8 +81,22 @@ else if (post is not null)
     private bool loading = true;
     private bool notFound = false;
     private PostDetailDto? post;
+    private string? _myUserId;
+    private bool _closing;
+    private string? _closeError;
 
     protected override async Task OnParametersSetAsync()
+    {
+        await LoadPostAsync();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _myUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    }
+
+    private async Task LoadPostAsync()
     {
         loading = true;
         notFound = false;
@@ -56,7 +104,7 @@ else if (post is not null)
 
         try
         {
-            post = await Http.GetFromJsonAsync<PostDetailDto>($"api/posts/{Id}");
+            post = await Http.GetFromJsonAsync<PostDetailDto>($"/api/posts/{Id}");
             if (post is null) notFound = true;
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
@@ -68,4 +116,50 @@ else if (post is not null)
             loading = false;
         }
     }
+
+    private async Task ClosePostAsync(string reason)
+    {
+        _closing = true;
+        _closeError = null;
+
+        try
+        {
+            var resp = await Http.PostAsJsonAsync($"/api/posts/{Id}/close", new ClosePostRequest { Reason = reason });
+
+            if (resp.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _closeError = "No tienes permisos para cerrar este post.";
+                return;
+            }
+
+            if (resp.StatusCode == HttpStatusCode.BadRequest)
+            {
+                _closeError = await resp.Content.ReadAsStringAsync();
+                return;
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _closeError = $"Error: {(int)resp.StatusCode} {resp.ReasonPhrase}";
+                return;
+            }
+
+            await LoadPostAsync(); 
+        }
+        catch (Exception ex)
+        {
+            _closeError = ex.Message;
+        }
+        finally
+        {
+            _closing = false;
+        }
+    }
+
+    private sealed class ClosePostRequest
+    {
+        public string? Reason { get; set; }
+    }
+
+
 }

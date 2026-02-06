@@ -45,5 +45,12 @@ public sealed record PostDetailDto(
     string Location,
     DateOnly DateApprox,
     PostStatus Status,
-    DateTime CreatedAtUtc
+    DateTime CreatedAtUtc,
+    string CreatedByUserId
 );
+
+public sealed class ClosePostRequest
+{
+    public string? Reason { get; set; }
+}
+

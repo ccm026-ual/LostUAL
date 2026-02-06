@@ -10,3 +10,9 @@ public sealed class LoginResponse
 {
     public string Token { get; set; } = "";
 }
+
+public sealed class RegisterRequest
+{
+    public string Email { get; set; } = "";
+    public string Password { get; set; } = "";
+}

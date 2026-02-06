@@ -39,7 +39,7 @@ public class PostsController : ControllerBase
         return Ok(items);
     }
 
-    [HttpGet("{id:guid}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<PostDetailDto>> GetById(int id)
     {
         var item = await _db.Posts
@@ -58,7 +58,8 @@ public class PostsController : ControllerBase
                 p.Location!.Name,
                 p.DateApprox,
                 p.Status,
-                p.CreatedAtUtc
+                p.CreatedAtUtc,
+                p.CreatedByUserId
             ))
             .SingleOrDefaultAsync();
 
@@ -154,5 +155,47 @@ public class PostsController : ControllerBase
 
         return Ok(myPosts);
     }
+
+    [Authorize]
+    [HttpPost("{id:int}/close")]
+    public async Task<IActionResult> Close(int id, [FromBody] ClosePostRequest? body, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var post = await _db.Posts.FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (post is null)
+            return NotFound();
+
+        var isAdminOrModerator = User.IsInRole("Admin") || User.IsInRole("Moderator");
+        var isOwner = post.CreatedByUserId == userId;
+
+        // Reglas:
+        // - Open -> Closed: owner o admin/mod
+        // - OnClaim -> Closed: solo admin/mod
+        // - Resolved: no se cierra (400)
+
+        if (post.Status == PostStatus.Resolved)
+            return BadRequest("Post ya resuelto.");
+
+        if (post.Status == PostStatus.InClaim && !isAdminOrModerator)
+            return Forbid();
+
+        if (!isOwner && !isAdminOrModerator)
+            return Forbid();
+
+        if (post.Status == PostStatus.Closed)
+            return NoContent();
+
+        post.Status = PostStatus.Closed;
+        post.ClosedAtUtc = DateTime.UtcNow;
+        post.ClosedByUserId = userId;
+        post.ClosedReason = body?.Reason;
+
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
 
 }

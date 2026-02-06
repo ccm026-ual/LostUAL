@@ -33,7 +33,10 @@ builder.Services.AddHttpClient("Api", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
 })
-.AddHttpMessageHandler<AuthHeaderHandler>();
+.AddHttpMessageHandler<AuthHeaderHandler>()
+.AddHttpMessageHandler<UnauthorizedRedirectHandler>();
+
+builder.Services.AddScoped<UnauthorizedRedirectHandler>();
 
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Api"));
 

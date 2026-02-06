@@ -36,5 +36,8 @@ public class ItemPost
     public DateTime? CreatorConfirmedResolvedAtUtc { get; set; }
     public DateTime? ClaimantConfirmedResolvedAtUtc { get; set; }
     public List<Claim> Claims { get; set; } = new();
+    public DateTime? ClosedAtUtc { get; set; }
+    public string? ClosedByUserId { get; set; }
+    public string? ClosedReason { get; set; }
 }
 

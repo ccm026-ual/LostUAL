@@ -34,7 +34,7 @@ else
             @foreach (var p in _posts)
             {
                 <tr>
-                    <td>@p.Title</td>
+                    <NavLink href="@($"posts/{p.Id}")">@p.Title</NavLink>
                     <td>@p.Type</td>
                     <td>@p.Status</td>
                     <td>@(p.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "")</td>
