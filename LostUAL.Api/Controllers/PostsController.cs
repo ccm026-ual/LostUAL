@@ -9,6 +9,7 @@ using System.IdentityModel.Tokens.Jwt;
 
 namespace LostUAL.Api.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class PostsController : ControllerBase
@@ -35,6 +36,25 @@ public class PostsController : ControllerBase
                 p.CreatedAtUtc
             ))
             .ToListAsync();
+
+        return Ok(items);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("preview")]
+    public async Task<IActionResult> GetPreview([FromQuery] int take = 20, CancellationToken ct = default)
+    {
+        take = Math.Clamp(take, 1, 50);
+
+        var items = await _db.Posts
+            .AsNoTracking()
+            .Where(p => p.Status == PostStatus.Open)
+            .OrderByDescending(p => p.CreatedAtUtc)
+            .Take(take)
+            .Select(p => new PostListItemDto(
+                p.Id, p.Type, p.Title, p.Category!.Name, p.Location!.Name, p.DateApprox, p.Status, p.CreatedAtUtc
+            ))
+            .ToListAsync(ct);
 
         return Ok(items);
     }
