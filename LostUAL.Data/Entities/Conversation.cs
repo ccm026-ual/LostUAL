@@ -7,7 +7,7 @@ public class Conversation
     public int Id { get; set; }
 
     public int ClaimId { get; set; }
-    public Claim? Claim { get; set; }
+    public Claim Claim { get; set; } = default!;
 
     public ConversationStatus Status { get; set; } = ConversationStatus.Active;
 

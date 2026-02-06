@@ -10,7 +10,7 @@ public class Claim
     public int PostId { get; set; }
     public ItemPost? Post { get; set; }
 
-    public string? ClaimantUserId { get; set; }
+    public string ClaimantUserId { get; set; } = default!;
 
     public ClaimStatus Status { get; set; } = ClaimStatus.Pending;
 

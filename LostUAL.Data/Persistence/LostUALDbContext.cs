@@ -68,6 +68,10 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
 
         // Claim -> Conversation (1:1)
         modelBuilder.Entity<Claim>()
+            .HasIndex(c => new { c.PostId, c.ClaimantUserId })
+            .IsUnique();
+
+        modelBuilder.Entity<Claim>()
             .HasOne(c => c.Conversation)
             .WithOne(conv => conv.Claim)
             .HasForeignKey<Conversation>(conv => conv.ClaimId)
@@ -79,15 +83,15 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
             .WithOne(m => m.Conversation)
             .HasForeignKey(m => m.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Conversation>()
+            .HasIndex(c => c.ClaimId)
+            .IsUnique();
 
         modelBuilder.Entity<ItemPost>()
             .HasOne<Claim>()
             .WithMany()
             .HasForeignKey(p => p.WinningClaimId)
             .OnDelete(DeleteBehavior.NoAction);
-        
-        modelBuilder.Entity<Claim>()
-            .HasIndex(c => new { c.PostId, c.Status });
 
         modelBuilder.Entity<Message>()
             .HasIndex(m => new { m.ConversationId, m.CreatedAtUtc });

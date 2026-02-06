@@ -9,3 +9,8 @@ public enum ClaimStatus
     Rejected = 4,
     Expired = 5
 }
+
+public sealed class CreateClaimRequest
+{
+    public string Message { get; set; } = "";
+}

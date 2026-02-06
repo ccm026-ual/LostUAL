@@ -1,11 +1,14 @@
-﻿using LostUAL.Contracts.Posts;
+﻿using LostUAL.Contracts.Claims;
+using LostUAL.Contracts.Posts;
+using LostUAL.Contracts.Chat;
 using LostUAL.Data.Entities;
 using LostUAL.Data.Persistence;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+
 
 namespace LostUAL.Api.Controllers;
 
@@ -220,6 +223,18 @@ public class PostsController : ControllerBase
         if (post.Status == PostStatus.Resolved)
             return BadRequest("Post ya resuelto.");
 
+        // Si hay algún pending el creador no puede cerrar el post
+        if (post.Status == PostStatus.Open && isOwner && !isAdminOrModerator)
+        {
+            var hasPending = await _db.Claims
+                .AsNoTracking()
+                .AnyAsync(c => c.PostId == post.Id && c.Status == ClaimStatus.Pending, ct);
+
+            if (hasPending)
+                return BadRequest("No puedes cerrar el post mientras existan reclamaciones pendientes. Recházalas o resuélvelas primero.");
+        }
+
+
         if (post.Status == PostStatus.InClaim && !isAdminOrModerator)
             return Forbid();
 
@@ -237,6 +252,118 @@ public class PostsController : ControllerBase
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }
+    /*
+    [Authorize]
+    [HttpPost("{id:int}/claims")]
+    public async Task<IActionResult> CreateClaim(int id, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var post = await _db.Posts.FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (post is null)
+            return NotFound();
+
+        if (post.CreatedByUserId == userId)
+            return BadRequest("No puedes reclamar tu propio post.");
+
+        if (post.Status != PostStatus.Open)
+            return BadRequest("Solo se puede reclamar un post en estado Open.");
+
+        var already = await _db.Claims.AnyAsync(c =>
+            c.PostId == id &&
+            c.ClaimantUserId == userId &&
+            c.Status != ClaimStatus.Withdrawn &&
+            c.Status != ClaimStatus.Rejected &&
+            c.Status != ClaimStatus.Expired, ct);
+
+        if (already)
+            return Conflict("Ya has reclamado este post.");
+
+        var claim = new Data.Entities.Claim
+        {
+            PostId = id,
+            ClaimantUserId = userId,
+            Status = ClaimStatus.Pending,
+            CreatedAtUtc = DateTime.UtcNow,
+
+            ExpiresAtUtc = null,
+            ResolvedAtUtc = null,
+            Conversation = null
+        };
+
+        _db.Claims.Add(claim);
+
+        await _db.SaveChangesAsync(ct);
+
+        return Created($"/api/claims/{claim.Id}", new
+        {
+            claim.Id,
+            claim.PostId,
+            claim.Status,
+            claim.CreatedAtUtc
+        });
+    }*/
+
+    [Authorize]
+    [HttpPost("{id:int}/claims")]
+    public async Task<IActionResult> CreateClaim(int id, [FromBody] CreateClaimRequest body, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var text = (body?.Message ?? "").Trim();
+        if (text.Length < 2) return BadRequest("El mensaje es obligatorio.");
+        if (text.Length > 1000) return BadRequest("Mensaje demasiado largo (máx 1000).");
+
+        var post = await _db.Posts.FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (post is null) return NotFound();
+
+        if (post.CreatedByUserId == userId) return BadRequest("No puedes reclamar tu propio post.");
+        if (post.Status != PostStatus.Open) return BadRequest("Solo se puede reclamar un post en estado Open.");
+
+        var already = await _db.Claims.AnyAsync(c =>
+            c.PostId == id &&
+            c.ClaimantUserId == userId &&
+            c.Status != ClaimStatus.Withdrawn &&
+            c.Status != ClaimStatus.Rejected &&
+            c.Status != ClaimStatus.Expired, ct);
+
+        if (already) return Conflict("Ya has reclamado este post.");
+
+        var claim = new Data.Entities.Claim
+        {
+            PostId = id,
+            ClaimantUserId = userId,
+            Status = ClaimStatus.Pending,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        var conversation = new Conversation
+        {
+            Claim = claim,
+            Status = ConversationStatus.Active,
+            CreatedAtUtc = DateTime.UtcNow,
+            Messages = new List<Message>
+        {
+            new Message
+            {
+                SenderUserId = userId,
+                Body = text,
+                CreatedAtUtc = DateTime.UtcNow
+            }
+        }
+        };
+
+        _db.Conversations.Add(conversation);
+
+        await _db.SaveChangesAsync(ct);
+
+        return Created($"/api/claims/{claim.Id}", new { claimId = claim.Id, conversationId = conversation.Id });
+    }
+
+
 
 
 }
