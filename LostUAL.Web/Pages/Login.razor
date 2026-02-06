@@ -1,0 +1,81 @@
+﻿@page "/login"
+@using System.ComponentModel.DataAnnotations
+@inject LostUAL.Web.Auth.AuthService Auth
+@inject NavigationManager Nav
+
+<h3>Login</h3>
+
+@if (!string.IsNullOrWhiteSpace(_error))
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<EditForm Model="_model" OnValidSubmit="DoLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText class="form-control" @bind-Value="_model.Email" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <InputText class="form-control" type="password" @bind-Value="_model.Password" />
+    </div>
+
+    <button class="btn btn-primary" type="submit" @attributes="(_busy ? _disabledAttr : null)">
+        @(_busy ? "Entrando..." : "Entrar")
+    </button>
+
+    @code {
+        private static readonly Dictionary<string, object> _disabledAttr =
+        new() { ["disabled"] = "disabled" };
+    }
+
+</EditForm>
+
+@code {
+    private readonly LoginVm _model = new();
+    private bool _busy;
+    private string? _error;
+
+    private async Task DoLogin()
+    {
+        _busy = true;
+        _error = null;
+
+        var (ok, error) = await Auth.LoginAsync(_model.Email, _model.Password);
+        _busy = false;
+
+        if (!ok)
+        {
+            _error = error;
+            return;
+        }
+
+        var returnUrl = GetQueryParam("returnUrl");
+        Nav.NavigateTo(string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl);
+    }
+
+    private string? GetQueryParam(string key)
+    {
+        var uri = new Uri(Nav.Uri);
+        var q = uri.Query.TrimStart('?');
+        if (string.IsNullOrWhiteSpace(q)) return null;
+
+        foreach (var part in q.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = part.Split('=', 2);
+            if (kv.Length == 2 && Uri.UnescapeDataString(kv[0]) == key)
+                return Uri.UnescapeDataString(kv[1]);
+        }
+        return null;
+    }
+
+    private sealed class LoginVm
+    {
+        [Required, EmailAddress] public string Email { get; set; } = "";
+        [Required] public string Password { get; set; } = "";
+    }
+}

@@ -39,9 +39,19 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
         );
 
         modelBuilder.Entity<ItemPost>()
+            .Property(p => p.CreatedByUserId)
+            .HasMaxLength(450); 
+        modelBuilder.Entity<ItemPost>()
             .Property(p => p.DateApprox)
             .HasConversion(dateOnlyConverter)
             .Metadata.SetValueComparer(dateOnlyComparer);
+
+        modelBuilder.Entity<ItemPost>()
+            .HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(p => p.CreatedByUserId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Category>()
             .HasIndex(c => c.Name)

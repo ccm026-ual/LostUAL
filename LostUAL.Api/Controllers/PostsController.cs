@@ -3,6 +3,8 @@ using LostUAL.Data.Entities;
 using LostUAL.Data.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace LostUAL.Api.Controllers;
 
@@ -66,8 +68,12 @@ public class PostsController : ControllerBase
 
 
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<PostListItemDto>> Create(CreatePostRequest request)
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
         // 1) Validación mínima (evita FK inválidas)
         var categoryExists = await _db.Categories.AnyAsync(c => c.Id == request.CategoryId);
         var locationExists = await _db.Locations.AnyAsync(l => l.Id == request.LocationId);
@@ -78,6 +84,7 @@ public class PostsController : ControllerBase
         // 2) Crear entidad
         var post = new ItemPost
         {
+            CreatedByUserId = userId,
             Type = request.Type,
             Title = request.Title.Trim(),
             Description = request.Description.Trim(),

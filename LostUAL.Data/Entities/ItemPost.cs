@@ -1,4 +1,5 @@
 ﻿using LostUAL.Contracts.Posts;
+using LostUAL.Data.Identity;
 using System.Security.Claims;
 
 namespace LostUAL.Data.Entities;
@@ -11,7 +12,7 @@ public class ItemPost
 
     public required string Title { get; set; }
     public required string Description { get; set; }
-
+    public string? CreatedByUserId { get; set; }
     public int CategoryId { get; set; }
     public Category? Category { get; set; }
 

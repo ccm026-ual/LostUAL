@@ -1,4 +1,8 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject LostUAL.Web.Auth.AuthService Auth
+@inject NavigationManager Nav
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">LostUAL.Web</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
@@ -32,8 +36,25 @@
             <NavLink class="nav-link" href="new-post">
                 <span class="oi oi-plus" aria-hidden="true"></span> Nuevo post
             </NavLink>
-
         </div>
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <a class="nav-link" href="" @onclick="DoLogout">
+                        <span class="oi oi-account-logout" aria-hidden="true"></span> Logout
+                    </a>
+                </div>
+            </Authorized>
+
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">
+                        <span class="oi oi-account-login" aria-hidden="true"></span> Login
+                    </NavLink>
+                </div>
+            </NotAuthorized>
+        </AuthorizeView>
+
     </nav>
 </div>
 
@@ -46,4 +67,11 @@
     {
         collapseNavMenu = !collapseNavMenu;
     }
+    private async Task DoLogout()
+    {
+        await Auth.LogoutAsync();
+        collapseNavMenu = true;  
+        Nav.NavigateTo("/");
+    }
+
 }
