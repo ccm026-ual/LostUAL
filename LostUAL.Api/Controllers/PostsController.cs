@@ -39,14 +39,34 @@ public class PostsController : ControllerBase
         return Ok(items);
     }
 
+    [Authorize]
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<PostDetailDto>> GetById(int id)
+    public async Task<IActionResult> GetById(int id, CancellationToken ct)
     {
-        var item = await _db.Posts
+        var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var isAdminOrModerator = User.IsInRole("Admin") || User.IsInRole("Moderator");
+
+        var info = await _db.Posts
             .AsNoTracking()
             .Where(p => p.Id == id)
-            .Include(p => p.Category)
-            .Include(p => p.Location)
+            .Select(p => new { p.CreatedByUserId, p.Status })
+            .FirstOrDefaultAsync(ct);
+
+        if (info is null)
+            return NotFound();
+
+        var isOwner = info.CreatedByUserId == userId;
+
+      
+        if ((info.Status == PostStatus.Closed || info.Status == PostStatus.Resolved) && !(isOwner || isAdminOrModerator))
+            return NotFound();
+
+        var dto = await _db.Posts
+            .AsNoTracking()
+            .Where(p => p.Id == id)
             .Select(p => new PostDetailDto(
                 p.Id,
                 p.Type,
@@ -61,11 +81,12 @@ public class PostsController : ControllerBase
                 p.CreatedAtUtc,
                 p.CreatedByUserId
             ))
-            .SingleOrDefaultAsync();
+            .FirstOrDefaultAsync(ct);
 
-        if (item is null) return NotFound();
+        if (dto is null)
+            return NotFound();
 
-        return Ok(item);
+        return Ok(dto);
     }
 
 

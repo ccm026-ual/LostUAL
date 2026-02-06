@@ -1,0 +1,72 @@
+﻿@using LostUAL.Contracts.Posts
+@inject NavigationManager Nav
+
+@if (Show && Item is not null)
+{
+    <div class="authgate-backdrop" @onclick="Close"></div>
+
+    <div class="authgate-modal" role="dialog" aria-modal="true">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h5 class="mb-1">@Item.Title</h5>
+                <div class="text-muted small">
+                    @Item.Type · @Item.Category · @Item.Location · @Item.DateApprox
+                </div>
+            </div>
+
+            <button class="btn btn-sm btn-outline-secondary" @onclick="Close">✕</button>
+        </div>
+
+        <div class="alert alert-info mt-3 mb-3">
+            Para ver más detalles, reclamar o chatear, necesitas iniciar sesión.
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" @onclick="GoLogin">Iniciar sesión</button>
+            <button class="btn btn-outline-primary" @onclick="GoRegister">Registrarse</button>
+            <button class="btn btn-link ms-auto" @onclick="Close">Cancelar</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public PostListItemDto? Item { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async Task Close() => await OnClose.InvokeAsync();
+
+    private void GoLogin()
+    {
+       
+        var returnUrl = Uri.EscapeDataString($"/posts/{Item!.Id}");
+        Nav.NavigateTo($"/login?returnUrl={returnUrl}");
+    }
+
+    private void GoRegister()
+    {
+        Nav.NavigateTo("/register");
+    }
+}
+
+<style>
+    .authgate-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 1040;
+    }
+
+    .authgate-modal {
+        position: fixed;
+        left: 50%;
+        top: 20%;
+        transform: translateX(-50%);
+        width: min(520px, calc(100% - 2rem));
+        background: #fff;
+        border-radius: .75rem;
+        padding: 1rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,.35);
+        z-index: 1050;
+    }
+</style>

@@ -1,6 +1,9 @@
 ﻿@page "/posts"
 @inject HttpClient Http
 @using LostUAL.Contracts.Posts
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
 
 <h3>Posts (demo)</h3>
 
@@ -15,9 +18,10 @@ else
         {
             <div class="list-group-item">
                 <div class="d-flex justify-content-between">
-                    <NavLink href="@($"posts/{p.Id}")" class="text-decoration-none">
-                        <strong>@p.Title</strong>
-                    </NavLink>
+                    <a href="" @onclick="() => OnPostClick(p)" @onclick:preventDefault="true">
+                        @p.Title
+                    </a>
+
                     <span class="badge bg-secondary">@p.Type</span>
                 </div>
                 <small>@p.Category · @p.Location · @p.DateApprox</small>
@@ -28,6 +32,9 @@ else
             </div>
         }
     </div>
+
+    <LoginGateModal Show="_showGate" Item="_selected" OnClose="CloseGate" />
+
 }
 
 @code {
@@ -37,4 +44,30 @@ else
     {
         items = await Http.GetFromJsonAsync<List<PostListItemDto>>("api/posts");
     }
+
+    private bool _showGate;
+    private PostListItemDto? _selected;
+
+    private async Task OnPostClick(PostListItemDto p)
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var isAuthed = authState.User.Identity?.IsAuthenticated == true;
+
+        if (isAuthed)
+        {
+            Nav.NavigateTo($"/posts/{p.Id}");
+            return;
+        }
+
+        _selected = p;
+        _showGate = true;
+    }
+
+    private Task CloseGate()
+    {
+        _showGate = false;
+        _selected = null;
+        return Task.CompletedTask;
+    }
+
 }
