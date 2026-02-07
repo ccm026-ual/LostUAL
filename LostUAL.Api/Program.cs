@@ -73,6 +73,9 @@ builder.Services
     .AddEntityFrameworkStores<LostUALDbContext>()
     .AddSignInManager();
 
+builder.Services.AddHostedService<LostUAL.Api.Services.ClaimAutoResolveService>();
+
+
 var jwtSection = builder.Configuration.GetSection("Jwt");
 
 var key = (jwtSection["Key"] ?? "").Trim();

@@ -21,6 +21,23 @@ else
     <div class="mb-3 d-flex gap-2 align-items-center">
         <span class="badge bg-secondary">Claim: @_claimStatus</span>
 
+        @if (_claimStatus == ClaimStatus.Accepted)
+        {
+            <span class="badge bg-info text-dark">
+                Owner: @(_ownerConfirmedAtUtc is null ? "pendiente" : "confirmado")
+            </span>
+            <span class="badge bg-info text-dark">
+                Claimant: @(_claimantConfirmedAtUtc is null ? "pendiente" : "confirmado")
+            </span>
+
+            @if (_autoResolveAtUtc is not null)
+            {
+                <span class="small text-muted ms-1">
+                    Auto-resolve: @_autoResolveAtUtc.Value.ToLocalTime()
+                </span>
+            }
+        }
+
         @if (_canAccept)
         {
             <button class="btn btn-success btn-sm" @onclick="AcceptAsync" disabled="@_acting">
@@ -34,6 +51,22 @@ else
                 @(_acting ? "Procesando..." : "Rechazar")
             </button>
         }
+
+        @if (_canConfirm)
+        {
+            <button class="btn btn-primary btn-sm" @onclick="ConfirmAsync" disabled="@_acting">
+                @(_acting ? "Procesando..." : "Confirmar resolución")
+            </button>
+        }
+
+        @if (_canWithdraw)
+        {
+            <button class="btn btn-outline-danger btn-sm" @onclick="WithdrawAsync" disabled="@_acting">
+                @(_acting ? "Procesando..." : "Retirar claim")
+            </button>
+        }
+
+
     </div>
 
     @if (!string.IsNullOrWhiteSpace(_actionError))
@@ -96,6 +129,12 @@ else
     private ClaimStatus _claimStatus = ClaimStatus.Pending;
     private bool _canAccept;
     private bool _canReject;
+    private bool _canConfirm;
+    private bool _canWithdraw;
+
+    private DateTime? _ownerConfirmedAtUtc;
+    private DateTime? _claimantConfirmedAtUtc;
+    private DateTime? _autoResolveAtUtc;
 
     private bool _acting;
     private string? _actionError;
@@ -129,6 +168,12 @@ else
             _claimStatus = resp.ClaimStatus;
             _canAccept = resp.CanAccept;
             _canReject = resp.CanReject;
+            _canConfirm = resp.CanConfirm;
+            _canWithdraw = resp.CanWithdraw;
+            _ownerConfirmedAtUtc = resp.OwnerConfirmedAtUtc;
+            _claimantConfirmedAtUtc = resp.ClaimantConfirmedAtUtc;
+            _autoResolveAtUtc = resp.AutoResolveAtUtc;
+
         }
         catch (HttpRequestException ex)
         {
@@ -192,6 +237,13 @@ else
         public ClaimStatus ClaimStatus { get; set; }
         public bool CanAccept { get; set; }
         public bool CanReject { get; set; }
+        public bool CanWithdraw { get; set; }
+
+        public bool CanConfirm { get; set; }
+        public DateTime? OwnerConfirmedAtUtc { get; set; }
+        public DateTime? ClaimantConfirmedAtUtc { get; set; }
+        public DateTime? AutoResolveAtUtc { get; set; }
+
 
         public List<MessageDto>? Messages { get; set; }
     }
@@ -256,6 +308,56 @@ else
             _acting = false;
         }
     }
+
+    private async Task WithdrawAsync()
+    {
+        _actionError = null;
+        _acting = true;
+
+        try
+        {
+            var resp = await Http.PostAsync($"/api/claims/{_claimId}/withdraw", null);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _actionError = string.IsNullOrWhiteSpace(body) ? $"Error {(int)resp.StatusCode}" : body;
+                return;
+            }
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _acting = false;
+        }
+    }
+
+
+    private async Task ConfirmAsync()
+    {
+        _actionError = null;
+        _acting = true;
+
+        try
+        {
+            var resp = await Http.PostAsync($"/api/claims/{_claimId}/confirm", null);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var body = await resp.Content.ReadAsStringAsync();
+                _actionError = string.IsNullOrWhiteSpace(body) ? $"Error {(int)resp.StatusCode}" : body;
+                return;
+            }
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _acting = false;
+        }
+    }
+
 
 }
 

@@ -9,7 +9,8 @@ public enum ClaimStatus
     Standby = 2,
     Withdrawn = 3,
     Rejected = 4,
-    Expired = 5
+    Expired = 5,
+    Resolved = 6
 }
 
 public sealed class CreateClaimRequest

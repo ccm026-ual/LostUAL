@@ -101,7 +101,14 @@ public class ClaimsController : ControllerBase
         if (alreadyAccepted)
             return Conflict("Ya existe una claim aceptada para este post.");
 
+        var now = DateTime.UtcNow;
+
         claim.Status = ClaimStatus.Accepted;
+
+        claim.AcceptedAtUtc = now;
+        claim.OwnerConfirmedAtUtc = null;
+        claim.ClaimantConfirmedAtUtc = null;
+        claim.AutoResolveAtUtc = now.AddDays(14);
 
         claim.Post.Status = PostStatus.InClaim;
 
@@ -165,5 +172,137 @@ public class ClaimsController : ControllerBase
         });
     }
 
+    [HttpPost("{id:int}/confirm")]
+    public async Task<IActionResult> ConfirmResolution(int id, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var claim = await _db.Claims
+            .Include(c => c.Post)
+            .Include(c => c.Conversation)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+        if (claim is null)
+            return NotFound();
+
+        var isOwner = claim.Post!.CreatedByUserId == userId;
+        var isClaimant = claim.ClaimantUserId == userId;
+
+        if (!(isOwner || isClaimant))
+            return Forbid();
+
+        if (claim.Status != ClaimStatus.Accepted)
+            return BadRequest("Solo se puede confirmar una claim aceptada.");
+
+        if (claim.Post.Status != PostStatus.InClaim)
+            return BadRequest("El post no está en InClaim.");
+
+        var now = DateTime.UtcNow;
+
+        if (isOwner && claim.OwnerConfirmedAtUtc is null)
+            claim.OwnerConfirmedAtUtc = now;
+
+        if (isClaimant && claim.ClaimantConfirmedAtUtc is null)
+            claim.ClaimantConfirmedAtUtc = now;
+
+        if (claim.OwnerConfirmedAtUtc is not null && claim.ClaimantConfirmedAtUtc is not null)
+        {
+            await ResolveClaimAndPostAsync(claim, now, ct);
+            return Ok(new { resolved = true });
+        }
+
+        claim.AutoResolveAtUtc = now.AddDays(7);
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(new { resolved = false, autoResolveAtUtc = claim.AutoResolveAtUtc });
+    }
+
+    [HttpPost("{id:int}/withdraw")]
+    public async Task<IActionResult> Withdraw(int id, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var claim = await _db.Claims
+            .Include(c => c.Post)
+            .Include(c => c.Conversation)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+        if (claim is null)
+            return NotFound();
+
+        if (claim.ClaimantUserId != userId)
+            return Forbid();
+
+        if (claim.Status is ClaimStatus.Rejected or ClaimStatus.Withdrawn or ClaimStatus.Expired or ClaimStatus.Resolved)
+            return BadRequest("La reclamación ya está finalizada.");
+
+        if (claim.OwnerConfirmedAtUtc is not null || claim.ClaimantConfirmedAtUtc is not null)
+            return BadRequest("No puedes retirar la reclamación una vez iniciada la confirmación de resolución.");
+
+        var now = DateTime.UtcNow;
+        var wasAccepted = claim.Status == ClaimStatus.Accepted;
+
+        claim.Status = ClaimStatus.Withdrawn;
+        claim.ResolvedAtUtc = now;
+        claim.AutoResolveAtUtc = null;
+
+        if (claim.Conversation is not null)
+            claim.Conversation.Status = ConversationStatus.ReadOnly;
+
+        if (claim.Post is not null && claim.Post.Status == PostStatus.InClaim && claim.Status == ClaimStatus.Withdrawn)
+        {
+            claim.Post.Status = PostStatus.Open;
+
+            var standby = await _db.Claims
+                .Where(c => c.PostId == claim.PostId && c.Id != claim.Id && c.Status == ClaimStatus.Standby)
+                .ToListAsync(ct);
+
+            foreach (var c in standby)
+                c.Status = ClaimStatus.Pending;
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            claimId = claim.Id,
+            status = claim.Status,
+            conversationStatus = claim.Conversation?.Status
+        });
+    }
+
+
+    private async Task ResolveClaimAndPostAsync(LostUAL.Data.Entities.Claim claim, DateTime now, CancellationToken ct)
+    {
+        claim.Status = ClaimStatus.Resolved;
+        claim.ResolvedAtUtc = now;
+
+        claim.Post!.Status = PostStatus.Resolved;
+
+        if (claim.Conversation is not null)
+            claim.Conversation.Status = ConversationStatus.ReadOnly;
+
+        var others = await _db.Claims
+            .Include(c => c.Conversation)
+            .Where(c => c.PostId == claim.PostId && c.Id != claim.Id &&
+                        (c.Status == ClaimStatus.Pending || c.Status == ClaimStatus.Standby))
+            .ToListAsync(ct);
+
+        foreach (var c in others)
+        {
+            c.Status = ClaimStatus.Rejected;
+            c.ResolvedAtUtc = now;
+            if (c.Conversation is not null)
+                c.Conversation.Status = ConversationStatus.ReadOnly;
+        }
+
+        await _db.SaveChangesAsync(ct);
+    }
+
 
 }
+

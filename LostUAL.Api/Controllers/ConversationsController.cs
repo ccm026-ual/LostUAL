@@ -31,7 +31,6 @@ public class ConversationsController : ControllerBase
 
         var isMod = User.IsInRole("Admin") || User.IsInRole("Moderator");
 
-       
         var info = await _db.Conversations
             .AsNoTracking()
             .Where(c => c.Id == id)
@@ -41,7 +40,10 @@ public class ConversationsController : ControllerBase
                 ClaimId = c.ClaimId,
                 ClaimStatus = c.Claim.Status,
                 ClaimantId = c.Claim.ClaimantUserId,
-                OwnerId = c.Claim.Post.CreatedByUserId
+                OwnerId = c.Claim.Post.CreatedByUserId,
+                c.Claim.OwnerConfirmedAtUtc,
+                c.Claim.ClaimantConfirmedAtUtc,
+                c.Claim.AutoResolveAtUtc
             })
             .FirstOrDefaultAsync(ct);
 
@@ -52,10 +54,20 @@ public class ConversationsController : ControllerBase
         if (!isParticipant)
             return Forbid();
         var isOwner = userId == info.OwnerId;
+        var isClaimant = userId == info.ClaimantId;
 
         var canAccept = isOwner && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
-
         var canReject = (isOwner || isMod) && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
+
+        var canConfirm =
+            info.ClaimStatus == ClaimStatus.Accepted &&
+            ((isOwner && info.OwnerConfirmedAtUtc == null) || (isClaimant && info.ClaimantConfirmedAtUtc == null));
+        
+        var canWithdraw =
+            isClaimant
+            && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby || info.ClaimStatus == ClaimStatus.Accepted)
+            && info.OwnerConfirmedAtUtc == null
+            && info.ClaimantConfirmedAtUtc == null;
 
         var items = await _db.Messages
             .AsNoTracking()
@@ -78,6 +90,11 @@ public class ConversationsController : ControllerBase
             claimStatus = info.ClaimStatus,
             canAccept,
             canReject,
+            canConfirm,
+            canWithdraw,
+            ownerConfirmedAtUtc = info.OwnerConfirmedAtUtc,
+            claimantConfirmedAtUtc = info.ClaimantConfirmedAtUtc,
+            autoResolveAtUtc = info.AutoResolveAtUtc,
             messages = items
         });
 

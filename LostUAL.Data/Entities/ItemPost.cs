@@ -29,12 +29,6 @@ public class ItemPost
 
     public int? WinningClaimId { get; set; } 
     public DateTime? OnClaimAtUtc { get; set; }
-
-    public DateTime? AutoResolveAtUtc { get; set; }
-    public bool IsAutoResolvePaused { get; set; } = false; 
-
-    public DateTime? CreatorConfirmedResolvedAtUtc { get; set; }
-    public DateTime? ClaimantConfirmedResolvedAtUtc { get; set; }
     public List<Claim> Claims { get; set; } = new();
     public DateTime? ClosedAtUtc { get; set; }
     public string? ClosedByUserId { get; set; }
