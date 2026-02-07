@@ -1,0 +1,72 @@
+﻿@using System
+@inject NavigationManager Nav
+
+@if (Show)
+{
+    <div class="claim-backdrop" @onclick="Close"></div>
+
+    <div class="claim-modal" role="dialog" aria-modal="true">
+        <div class="d-flex justify-content-between align-items-start">
+            <h5 class="mb-1">Reclamar post</h5>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="Close">✕</button>
+        </div>
+
+        <div class="text-muted small mb-2">
+            Escribe un primer mensaje para el owner.
+        </div>
+
+        <textarea class="form-control" rows="4" @bind="_text" placeholder="Hola, creo que es mío porque..."></textarea>
+
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="alert alert-danger mt-2 mb-0">@Error</div>
+        }
+
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary" @onclick="Submit" disabled="@Busy">
+                @(Busy ? "Enviando..." : "Enviar claim")
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="Close" disabled="@Busy">Cancelar</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<string> OnSubmit { get; set; }
+
+    private string _text = "";
+
+    protected override void OnParametersSet()
+    {
+        if (Show && string.IsNullOrWhiteSpace(_text))
+            _text = "";
+    }
+
+    private async Task Close() => await OnClose.InvokeAsync();
+
+    private async Task Submit()
+    {
+        var msg = (_text ?? "").Trim();
+        await OnSubmit.InvokeAsync(msg);
+    }
+}
+
+<style>
+    .claim-backdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.55);
+      z-index:1040;
+    }
+    .claim-modal{
+      position:fixed; left:50%; top:18%;
+      transform:translateX(-50%);
+      width:min(560px, calc(100% - 2rem));
+      background:#fff; border-radius:.75rem;
+      padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,.35);
+      z-index:1050;
+    }
+</style>

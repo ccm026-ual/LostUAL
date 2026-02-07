@@ -5,6 +5,7 @@
 @using System.Net
 @using System.Security.Claims
 @using System.Net.Http.Json
+@inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 @attribute [Authorize]
 
@@ -36,6 +37,15 @@ else if (post is not null)
                             <button class="btn btn-warning" @onclick='() => ClosePostAsync("Owner closed")' disabled="@_closing">
                                 @(_closing ? "Cerrando..." : "Cerrar post")
                             </button>
+            
+                        } 
+                        @*Si está Open y no es el Owner entocnes puedo reclamar*@
+                        @if (post.Status == PostStatus.Open && post.CreatedByUserId != _myUserId)
+                        {
+                            <button class="btn btn-primary" @onclick="OpenClaimModal">
+                                Reclamar
+                            </button>
+
                         }
 
                         @* Admin/Moderator: puede cerrar en Open y en InClaim *@
@@ -73,6 +83,13 @@ else if (post is not null)
             </div>
         </div>
     </div>
+
+    <ClaimModal Show="_showClaim"
+                Busy="_claiming"
+                Error="@_claimError"
+                OnClose="CloseClaimModal"
+                OnSubmit="SubmitClaimAsync" />
+
 
 }
 
@@ -161,6 +178,82 @@ else if (post is not null)
     {
         public string? Reason { get; set; }
     }
+
+    private bool _showClaim;
+    private bool _claiming;
+    private string? _claimError;
+
+    private void OpenClaimModal()
+    {
+        _claimError = null;
+        _showClaim = true;
+    }
+
+    private Task CloseClaimModal()
+    {
+        _showClaim = false;
+        _claimError = null;
+        return Task.CompletedTask;
+    }
+
+    private sealed class CreateClaimRequest
+    {
+        public string Message { get; set; } = "";
+    }
+
+    private sealed class CreateClaimResponse
+    {
+        public int ClaimId { get; set; }
+        public int ConversationId { get; set; }
+    }
+
+    private async Task SubmitClaimAsync(string message)
+    {
+        message = (message ?? "").Trim();
+
+        if (message.Length < 2)
+        {
+            _claimError = "Escribe un mensaje.";
+            return;
+        }
+
+        _claiming = true;
+        _claimError = null;
+
+        try
+        {
+            var resp = await Http.PostAsJsonAsync($"/api/posts/{Id}/claims", new CreateClaimRequest { Message = message });
+
+            if (resp.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                _claimError = "Ya has reclamado este post.";
+                return;
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _claimError = await resp.Content.ReadAsStringAsync();
+                if (string.IsNullOrWhiteSpace(_claimError))
+                    _claimError = $"Error {(int)resp.StatusCode}";
+                return;
+            }
+
+            var data = await resp.Content.ReadFromJsonAsync<CreateClaimResponse>();
+            if (data is null || data.ConversationId <= 0)
+            {
+                _claimError = "Respuesta inválida del servidor.";
+                return;
+            }
+
+            _showClaim = false;
+            Nav.NavigateTo($"/conversations/{data.ConversationId}");
+        }
+        finally
+        {
+            _claiming = false;
+        }
+    }
+
 
 
 }

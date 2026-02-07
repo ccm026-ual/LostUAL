@@ -8,7 +8,7 @@ public class Claim
     public int Id { get; set; }
 
     public int PostId { get; set; }
-    public ItemPost? Post { get; set; }
+    public ItemPost Post { get; set; } = default!;
 
     public string ClaimantUserId { get; set; } = default!;
 
@@ -20,5 +20,5 @@ public class Claim
 
     public DateTime? ResolvedAtUtc { get; set; }
 
-    public Conversation? Conversation { get; set; }
+    public Conversation Conversation { get; set; } = default!;
 }
