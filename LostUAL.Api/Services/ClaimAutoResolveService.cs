@@ -46,6 +46,7 @@ public sealed class ClaimAutoResolveService : BackgroundService
         foreach (var claim in due)
         {
             claim.Status = ClaimStatus.Resolved;
+            claim.IsActive = false;
             claim.ResolvedAtUtc = now;
 
             claim.Post!.Status = PostStatus.Resolved;
@@ -62,6 +63,7 @@ public sealed class ClaimAutoResolveService : BackgroundService
             foreach (var c in others)
             {
                 c.Status = ClaimStatus.Rejected;
+                c.IsActive = false;
                 c.ResolvedAtUtc = now;
                 if (c.Conversation is not null)
                     c.Conversation.Status = ConversationStatus.ReadOnly;

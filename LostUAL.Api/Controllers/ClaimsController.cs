@@ -156,6 +156,7 @@ public class ClaimsController : ControllerBase
             return BadRequest("Solo se puede rechazar una claim en estado Pending o Standby.");
 
         claim.Status = ClaimStatus.Rejected;
+        claim.IsActive = false;
         claim.ResolvedAtUtc = DateTime.UtcNow;
 
         if (claim.Conversation is not null)
@@ -247,6 +248,7 @@ public class ClaimsController : ControllerBase
         var wasAccepted = claim.Status == ClaimStatus.Accepted;
 
         claim.Status = ClaimStatus.Withdrawn;
+        claim.IsActive = false;
         claim.ResolvedAtUtc = now;
         claim.AutoResolveAtUtc = null;
 
@@ -279,6 +281,7 @@ public class ClaimsController : ControllerBase
     private async Task ResolveClaimAndPostAsync(LostUAL.Data.Entities.Claim claim, DateTime now, CancellationToken ct)
     {
         claim.Status = ClaimStatus.Resolved;
+        claim.IsActive = false;
         claim.ResolvedAtUtc = now;
 
         claim.Post!.Status = PostStatus.Resolved;
@@ -295,6 +298,7 @@ public class ClaimsController : ControllerBase
         foreach (var c in others)
         {
             c.Status = ClaimStatus.Rejected;
+            c.IsActive = false;
             c.ResolvedAtUtc = now;
             if (c.Conversation is not null)
                 c.Conversation.Status = ConversationStatus.ReadOnly;

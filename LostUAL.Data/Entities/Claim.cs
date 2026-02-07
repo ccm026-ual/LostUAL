@@ -13,6 +13,7 @@ public class Claim
     public string ClaimantUserId { get; set; } = default!;
 
     public ClaimStatus Status { get; set; } = ClaimStatus.Pending;
+    public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? AcceptedAtUtc { get; set; }

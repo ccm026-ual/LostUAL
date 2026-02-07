@@ -322,13 +322,18 @@ public class PostsController : ControllerBase
 
         if (post.CreatedByUserId == userId) return BadRequest("No puedes reclamar tu propio post.");
         if (post.Status != PostStatus.Open) return BadRequest("Solo se puede reclamar un post en estado Open.");
-
+        /*
         var already = await _db.Claims.AnyAsync(c =>
             c.PostId == id &&
             c.ClaimantUserId == userId &&
             c.Status != ClaimStatus.Withdrawn &&
             c.Status != ClaimStatus.Rejected &&
-            c.Status != ClaimStatus.Expired, ct);
+            c.Status != ClaimStatus.Expired, ct);*/
+
+        var already = await _db.Claims.AnyAsync(c =>
+            c.PostId == id &&
+            c.ClaimantUserId == userId &&
+            c.IsActive, ct);
 
         if (already) return Conflict("Ya has reclamado este post.");
 
