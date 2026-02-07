@@ -1,4 +1,6 @@
-﻿namespace LostUAL.Contracts.Claims;
+﻿using LostUAL.Contracts.Posts;
+
+namespace LostUAL.Contracts.Claims;
 
 public enum ClaimStatus
 {
@@ -14,3 +16,25 @@ public sealed class CreateClaimRequest
 {
     public string Message { get; set; } = "";
 }
+
+public sealed record MyClaimListItemDto(
+    int ClaimId,
+    int PostId,
+    string PostTitle,
+    PostType PostType,
+    ClaimStatus Status,
+    DateTime CreatedAtUtc,
+    int? ConversationId
+);
+
+public sealed record InboxClaimListItemDto(
+    int ClaimId,
+    int PostId,
+    string PostTitle,
+    PostType PostType,
+    ClaimStatus Status,
+    DateTime CreatedAtUtc,
+    string ClaimantUserId,
+    string? ClaimantEmail,
+    int? ConversationId
+);

@@ -38,6 +38,8 @@ public class ConversationsController : ControllerBase
             .Select(c => new
             {
                 c.Status,
+                ClaimId = c.ClaimId,
+                ClaimStatus = c.Claim.Status,
                 ClaimantId = c.Claim.ClaimantUserId,
                 OwnerId = c.Claim.Post.CreatedByUserId
             })
@@ -49,6 +51,11 @@ public class ConversationsController : ControllerBase
         var isParticipant = isMod || userId == info.ClaimantId || userId == info.OwnerId;
         if (!isParticipant)
             return Forbid();
+        var isOwner = userId == info.OwnerId;
+
+        var canAccept = isOwner && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
+
+        var canReject = (isOwner || isMod) && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
 
         var items = await _db.Messages
             .AsNoTracking()
@@ -67,8 +74,13 @@ public class ConversationsController : ControllerBase
         {
             conversationId = id,
             status = info.Status,
+            claimId = info.ClaimId,
+            claimStatus = info.ClaimStatus,
+            canAccept,
+            canReject,
             messages = items
         });
+
     }
 
     [HttpPost("{id:int}/messages")]
