@@ -255,6 +255,27 @@ public class PostsController : ControllerBase
         post.ClosedByUserId = userId;
         post.ClosedReason = body?.Reason;
 
+        var now = DateTime.UtcNow;
+
+        var closeClaimsStatus = isAdminOrModerator && !isOwner
+            ? ClaimStatus.Rejected
+            : ClaimStatus.Expired;
+
+        var activeClaims = await _db.Claims
+            .Include(c => c.Conversation)
+            .Where(c => c.PostId == post.Id && c.IsActive)
+            .ToListAsync(ct);
+
+        foreach (var c in activeClaims)
+        {
+            c.Status = closeClaimsStatus;
+            c.IsActive = false;
+            c.ResolvedAtUtc = now;
+
+            if (c.Conversation is not null)
+                c.Conversation.Status = ConversationStatus.ReadOnly;
+        }
+
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -327,7 +348,12 @@ public class PostsController : ControllerBase
         if (post is null) return NotFound();
 
         if (post.CreatedByUserId == userId) return BadRequest("No puedes reclamar tu propio post.");
-        if (post.Status != PostStatus.Open) return BadRequest("Solo se puede reclamar un post en estado Open.");
+        if (post.Status == PostStatus.Closed)
+            return BadRequest("Este post está cerrado. No se pueden crear reclamaciones nuevas.");
+        if (post.Status == PostStatus.Resolved)
+            return BadRequest("Este post ya está resuelto.");
+        if (post.Status == PostStatus.InClaim)
+            return BadRequest("Este post ya está en proceso de reclamación.");
         /*
         var already = await _db.Claims.AnyAsync(c =>
             c.PostId == id &&
