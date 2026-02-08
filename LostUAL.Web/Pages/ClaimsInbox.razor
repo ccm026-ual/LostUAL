@@ -8,6 +8,23 @@
 
 <h3>Reclamaciones recibidas</h3>
 
+@if (PostId is int)
+{
+    if (_items.Count > 0)
+    {
+        <div class="alert alert-secondary d-flex justify-content-between align-items-center">
+            <div>
+                Reclamaciones para:
+                <b>@FilterPostTitle</b>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @onclick="@(() => Nav.NavigateTo("/claims-inbox"))">
+                Ver todas
+            </button>
+        </div>
+    }
+}
+
 @if (_loading)
 {
     <p>Cargando...</p>
@@ -18,8 +35,22 @@ else if (!string.IsNullOrWhiteSpace(_error))
 }
 else if (_items.Count == 0)
 {
-    <div class="alert alert-info">No tienes reclamaciones recibidas.</div>
+    if (IsFiltered)
+    {
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+            <div>No hay reclamaciones para este post.</div>
+            <button class="btn btn-sm btn-outline-secondary"
+                    @onclick="@(() => Nav.NavigateTo("/my-posts"))">
+                Volver a Mis posts
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">No tienes reclamaciones recibidas.</div>
+    }
 }
+
 else
 {
     <table class="table">
@@ -70,6 +101,10 @@ else
     private bool _loading = true;
     private string? _error;
     private List<InboxClaimListItemDto> _items = new();
+    [SupplyParameterFromQuery]
+    public int? PostId { get; set; }
+    private bool IsFiltered => PostId is int;
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,7 +118,9 @@ else
 
         try
         {
-            _items = await Http.GetFromJsonAsync<List<InboxClaimListItemDto>>("/api/claims/inbox") ?? new();
+            var url = PostId is int pid ? $"/api/claims/inbox?postId={pid}" : "/api/claims/inbox";
+            _items = await Http.GetFromJsonAsync<List<InboxClaimListItemDto>>(url) ?? new();
+
         }
         catch (Exception ex)
         {
@@ -94,4 +131,8 @@ else
             _loading = false;
         }
     }
+
+    private string? FilterPostTitle =>
+    PostId is not null && _items.Count > 0 ? _items[0].PostTitle : null;
+
 }

@@ -24,6 +24,15 @@ public sealed record PostListItemDto(
     PostStatus Status,
     DateTime CreatedAtUtc
 );
+public sealed record MyPostListItemDto(
+    int PostId,
+    string Title,
+    PostType Type,
+    PostStatus Status,
+    DateTime CreatedAtUtc,
+    int PendingClaimsCount,
+    int? AcceptedConversationId
+);
 
 public sealed record CreatePostRequest(
     PostType Type,

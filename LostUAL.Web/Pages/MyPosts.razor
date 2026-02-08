@@ -1,9 +1,9 @@
 ﻿@page "/my-posts"
 @attribute [Authorize]
 @using System.Net.Http.Json
-@inject HttpClient Http
 @using LostUAL.Contracts.Posts
-
+@inject HttpClient Http
+@inject NavigationManager Nav
 
 <h3>Mis posts</h3>
 
@@ -15,46 +15,99 @@ else if (!string.IsNullOrWhiteSpace(_error))
 {
     <div class="alert alert-danger">@_error</div>
 }
-else if (_posts.Count == 0)
-{
-    <p>No has publicado nada todavía.</p>
-}
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Titulo</th>
-                <th>Tipo</th>
-                <th>Estado</th>
-                <th>Creado</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var p in _posts)
+    <div class="d-flex gap-2 align-items-center mb-3">
+        <label class="form-label mb-0">Filtrar por estado:</label>
+
+        <select class="form-select" style="max-width: 220px;" @bind="_statusFilter">
+            <option value="All">Todos</option>
+            @foreach (var s in Enum.GetValues<PostStatus>())
             {
-                <tr>
-                    <NavLink href="@($"posts/{p.Id}")">@p.Title</NavLink>
-                    <td>@p.Type</td>
-                    <td>@p.Status</td>
-                    <td>@(p.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "")</td>
-                </tr>
+                <option value="@s">@s</option>
             }
-        </tbody>
-    </table>
+        </select>
+    </div>
+
+    @if (Filtered.Count == 0)
+    {
+        <div class="alert alert-info">No hay posts para ese filtro.</div>
+    }
+    else
+    {
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Tipo</th>
+                    <th>Estado</th>
+                    <th>Claims pendientes</th>
+                    <th>Creado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Filtered)
+                {
+                    <tr>
+                        <td>@p.Title</td>
+                        <td>@p.Type</td>
+                        <td>@p.Status</td>
+                        <td>@p.PendingClaimsCount</td>
+                        <td>@p.CreatedAtUtc.ToLocalTime()</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    @onclick="@(() => Nav.NavigateTo($"/posts/{p.PostId}"))">
+                                Ver
+                            </button>
+
+                            @if (p.AcceptedConversationId is int convId)
+                            {
+                                <button class="btn btn-sm btn-primary ms-2"
+                                        @onclick="@(() => Nav.NavigateTo($"/conversations/{convId}"))">
+                                    Ir al chat
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-secondary ms-2"
+                                        @onclick="@(() => Nav.NavigateTo($"/claims-inbox?postId={p.PostId}"))">
+                                    Ver claims
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
 }
 
 @code {
     private bool _loading = true;
     private string? _error;
-    private List<MyPostDto> _posts = new();
+
+    private List<MyPostListItemDto> _items = new();
+    private string _statusFilter = "All";
+
+    private List<MyPostListItemDto> Filtered =>
+        _statusFilter == "All"
+            ? _items
+            : _items.Where(x => x.Status.ToString() == _statusFilter).ToList();
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
         try
         {
-            _posts = await Http.GetFromJsonAsync<List<MyPostDto>>("/api/posts/mine")
-                     ?? new List<MyPostDto>();
+            _items = await Http.GetFromJsonAsync<List<MyPostListItemDto>>("/api/posts/mine") ?? new();
         }
         catch (Exception ex)
         {
@@ -65,20 +118,4 @@ else
             _loading = false;
         }
     }
-
-    private sealed class MyPostDto
-    {
-        public int Id { get; set; }             
-        public string? Title { get; set; }
-        public string? Description { get; set; }
-
-        public PostType Type { get; set; }            
-        public PostStatus Status { get; set; }          
-
-        public int CategoryId { get; set; }
-        public int LocationId { get; set; }
-
-        public DateTime CreatedAtUtc { get; set; }  
-    }
-
 }

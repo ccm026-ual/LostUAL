@@ -43,15 +43,20 @@ public class ClaimsController : ControllerBase
     }
 
     [HttpGet("inbox")]
-    public async Task<IActionResult> Inbox(CancellationToken ct)
+    public async Task<IActionResult> Inbox([FromQuery] int? postId, CancellationToken ct)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrWhiteSpace(userId))
             return Unauthorized();
 
-        var items = await _db.Claims
+        var q = _db.Claims
             .AsNoTracking()
-            .Where(c => c.Post!.CreatedByUserId == userId)
+            .Where(c => c.Post!.CreatedByUserId == userId);
+
+        if (postId is int pid)
+            q = q.Where(c => c.PostId == pid);
+
+        var items = await q
             .OrderByDescending(c => c.CreatedAtUtc)
             .Select(c => new InboxClaimListItemDto(
                 c.Id,

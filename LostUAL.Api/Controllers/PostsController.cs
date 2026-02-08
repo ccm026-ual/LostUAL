@@ -185,16 +185,22 @@ public class PostsController : ControllerBase
             .AsNoTracking()
             .Where(p => p.CreatedByUserId == userId)
             .OrderByDescending(p => p.CreatedAtUtc) 
-            .Select(p => new {
+            .Select(p => new MyPostListItemDto(
                 p.Id,
                 p.Title,
-                p.Description,
                 p.Type,
                 p.Status,
-                p.CategoryId,
-                p.LocationId,
-                p.CreatedAtUtc
-            })
+                p.CreatedAtUtc,
+                _db.Claims.Count(c =>
+                c.PostId == p.Id &&
+                c.IsActive &&
+                (c.Status == ClaimStatus.Pending || c.Status == ClaimStatus.Standby)
+            ),
+                _db.Claims
+                .Where(c => c.PostId == p.Id && c.IsActive && c.Status == ClaimStatus.Accepted)
+                .Select(c => (int?)c.Conversation!.Id)
+                .FirstOrDefault()
+            ))
             .ToListAsync(ct);
 
         return Ok(myPosts);
