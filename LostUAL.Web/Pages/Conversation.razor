@@ -4,6 +4,8 @@
 @using System.Net.Http.Json
 @using LostUAL.Contracts.Chat
 @using LostUAL.Contracts.Claims
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager Nav
 @inject HttpClient Http
 
 <h3>Conversación</h3>
@@ -18,6 +20,77 @@ else if (!string.IsNullOrWhiteSpace(_error))
 }
 else
 {
+    @if (IsModerationView)
+    {
+        <div class="card mb-3 border-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="fw-semibold">Reporte</div>
+
+                        @if (!string.IsNullOrWhiteSpace(ModError))
+                        {
+                            <div class="text-danger">@ModError</div>
+                        }
+                        else if (Report is not null)
+                        {
+                            <div class="mt-1">@Report.Reason</div>
+                            <div class="text-muted">
+                                Estado: <strong>@Report.Status</strong>
+                                · Reporter: <strong>@Report.ReporterEmail</strong>
+                            </div>
+
+                            @if (Report.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(Report.BlockedEmail))
+                            {
+                                <div class="text-muted">
+                                    Bloqueado: <strong>@Report.BlockedEmail</strong>
+                                    @if (Report.LockoutEndUtc is not null)
+                                    {
+                                        <span> · Hasta: @Report.LockoutEndUtc.Value.ToLocalTime()</span>
+                                    }
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    @if (Report?.Status == ReportStatus.Open)
+                    {
+                        <div style="min-width: 320px;">
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <input class="form-control" type="number" min="1" @bind="BlockDays" />
+                                </div>
+                                <div class="col-8">
+                                    <input class="form-control" placeholder="Nota (opcional)" @bind="ModNote" />
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(ModError))
+                            {
+                                <div class="alert alert-danger mt-2 mb-0">@ModError</div>
+                            }
+                            <div class="d-flex gap-2 mt-2">
+                                <button type="button"
+                                        class="btn btn-outline-secondary btn-sm"
+                                        disabled="@(ModBusy)"
+                                        @onclick="DismissReport">
+                                    Dismiss
+                                </button>
+
+                                <button type="button"
+                                        class="btn btn-danger btn-sm"
+                                        disabled="@(ModBusy)"
+                                        @onclick="BlockUserFromReport">
+                                    Block user
+                                </button>
+
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
     <div class="mb-3 d-flex gap-2 align-items-center">
         <span class="badge bg-secondary">Claim: @_claimStatus</span>
 
@@ -65,6 +138,13 @@ else
                 @(_acting ? "Procesando..." : "Retirar claim")
             </button>
         }
+        <AuthorizeView>
+            <Authorized>
+                <button class="btn btn-outline-danger btn-sm" @onclick="() => ShowReport = true">
+                    Reportar conversación
+                </button>
+            </Authorized>
+        </AuthorizeView>
 
 
     </div>
@@ -130,9 +210,15 @@ else
     {
         <div class="alert alert-danger mt-2">@_sendError</div>
     }
+
+    <ReportConversationModal ConversationId="@ConversationId"
+                          Visible="@ShowReport"
+                          VisibleChanged="@((bool v) => ShowReport = v)" />
+
 }
 
 @code {
+    private bool ShowReport;
     [Parameter] public int ConversationId { get; set; }
 
     private bool _loading = true;
@@ -157,8 +243,32 @@ else
     private List<MessageDto> _messages = new();
     private SendDto _send = new();
 
+    //MODERACIÓN
+
+    private int? ReportId;
+    private ConversationReportSummaryDto? Report;
+    private bool IsModerationView => ReportId is not null;
+
+    private string? ModError;
+    private bool ModBusy;
+    private int BlockDays = 7;
+    private string? ModNote;
+
+
     protected override async Task OnParametersSetAsync()
     {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var q = QueryHelpers.ParseQuery(uri.Query);
+
+        ReportId = null;
+        if (q.TryGetValue("reportId", out var rid) && int.TryParse(rid.ToString(), out var parsed))
+            ReportId = parsed;
+
+        if (ReportId is not null)
+            await LoadReportSummaryAsync(ReportId.Value);
+        else
+            Report = null;
+
         await LoadAsync();
     }
 
@@ -356,6 +466,85 @@ else
         finally
         {
             _acting = false;
+        }
+    }
+
+    private async Task LoadReportSummaryAsync(int reportId)
+    {
+        ModError = null;
+
+        try
+        {
+            Report = await Http.GetFromJsonAsync<ConversationReportSummaryDto>(
+                $"api/moderation/conversations/reports/{reportId}/summary");
+        }
+        catch (Exception ex)
+        {
+            ModError = ex.Message;
+        }
+    }
+
+    private async Task DismissReport()
+    {
+        if (ReportId is null) return;
+
+        ModBusy = true;
+        ModError = null;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/moderation/conversations/reports/{ReportId.Value}/dismiss",
+                new { note = ModNote });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ModError = await res.Content.ReadAsStringAsync();
+                return;
+            }
+
+            await LoadReportSummaryAsync(ReportId.Value);
+        }
+        catch (Exception ex)
+        {
+            ModError = ex.Message;
+        }
+        finally
+        {
+            ModBusy = false;
+        }
+        @*ModError = "CLICK DismissReport() OK";
+        StateHasChanged();*@
+    }
+
+    private async Task BlockUserFromReport()
+    {
+        if (ReportId is null) return;
+
+        ModBusy = true;
+        ModError = null;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/moderation/conversations/reports/{ReportId.Value}/block",
+                new { days = BlockDays, note = ModNote });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ModError = await res.Content.ReadAsStringAsync();
+                return;
+            }
+
+            await LoadReportSummaryAsync(ReportId.Value);
+        }
+        catch (Exception ex)
+        {
+            ModError = ex.Message;
+        }
+        finally
+        {
+            ModBusy = false;
         }
     }
 

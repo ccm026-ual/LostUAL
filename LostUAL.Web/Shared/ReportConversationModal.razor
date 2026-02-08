@@ -1,0 +1,137 @@
+﻿@using System.Net.Http.Json
+@inject HttpClient Http
+
+@if (Visible)
+{
+    <div class="modal-backdrop fade show"></div>
+
+    <div class="modal fade show d-block" tabindex="-1" style="z-index: 2000;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Reportar conversación</h5>
+                        <small class="text-muted">Describe brevemente el motivo del reporte.</small>
+                    </div>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <textarea class="form-control"
+                              rows="5"
+                              placeholder="Escribe el motivo..."
+                              @bind="Reason"
+                              @bind:event="oninput"
+                              @bind:after="ClearEmptyError"></textarea>
+
+
+                    @if (ShowEmptyError)
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">
+                            Escribe un motivo.
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(ApiError))
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">
+                            @ApiError
+                        </div>
+                    }
+
+                    @if (Success)
+                    {
+                        <div class="alert alert-success mt-3 mb-0">
+                            Reporte enviado. Gracias.
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-danger"
+                            @onclick="Submit"
+                            disabled="@IsSending">
+                        @(IsSending ? "Enviando..." : "Enviar reporte")
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            @onclick="Close"
+                            disabled="@IsSending">
+                        Cancelar
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public int ConversationId { get; set; }
+
+    private string Reason { get; set; } = "";
+    private bool ShowEmptyError;
+    private string? ApiError;
+    private bool IsSending;
+    private bool Success;
+
+    private async Task Close()
+    {
+        Reason = "";
+        ShowEmptyError = false;
+        ApiError = null;
+        IsSending = false;
+        Success = false;
+
+        await VisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task Submit()
+    {
+        ApiError = null;
+
+        if (string.IsNullOrWhiteSpace(Reason))
+        {
+            ShowEmptyError = true;
+            return;
+        }
+
+        ShowEmptyError = false;
+        IsSending = true;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/conversations/{ConversationId}/report",
+                new { reason = Reason.Trim() });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ApiError = await res.Content.ReadAsStringAsync();
+                return;
+            }
+
+            Success = true;
+
+        }
+        catch (Exception ex)
+        {
+            ApiError = ex.Message;
+        }
+        finally
+        {
+            IsSending = false;
+        }
+    }
+
+    private void ClearEmptyError()
+    {
+        ShowEmptyError = false;
+    }
+
+}

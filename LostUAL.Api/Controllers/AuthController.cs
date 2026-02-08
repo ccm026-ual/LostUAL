@@ -58,6 +58,12 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByEmailAsync(request.Email.Trim());
         if (user is null) return Unauthorized();
 
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            var end = await _userManager.GetLockoutEndDateAsync(user);
+            return Unauthorized($"Usuario bloqueado hasta {end?.UtcDateTime:O}");
+        }
+
         var ok = await _userManager.CheckPasswordAsync(user, request.Password);
         if (!ok) return Unauthorized();
 

@@ -31,12 +31,30 @@ public sealed class UnauthorizedRedirectHandler : DelegatingHandler
             return response;
         }
 
+        string body = "";
+        try
+        {
+            body = await response.Content.ReadAsStringAsync(ct);
+        }
+        catch { /* ignore */ }
+
+        var isLocked =
+            body.Contains("locked", StringComparison.OrdinalIgnoreCase) ||
+            body.Contains("lockout", StringComparison.OrdinalIgnoreCase) ||
+            body.Contains("bloque", StringComparison.OrdinalIgnoreCase);
+
+        var msg = isLocked
+            ? "Tu cuenta está bloqueada. Contacta con soporte si crees que es un error."
+            : "Tu sesión ha expirado o no estás autorizado. Inicia sesión de nuevo.";
+
+        var msgQ = Uri.EscapeDataString(msg);
+
         if (Interlocked.Exchange(ref _redirecting, 1) == 0)
         {
             await _authState.ClearTokenAsync();
 
             var returnUrl = Uri.EscapeDataString(_nav.Uri);
-            _nav.NavigateTo($"/login?returnUrl={returnUrl}", replace: true);
+            _nav.NavigateTo($"/login?returnUrl={returnUrl}&msg={msgQ}", replace: true);
         }
 
         return response;

@@ -3,6 +3,7 @@ using System;
 using LostUAL.Data.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LostUAL.Data.Migrations
 {
     [DbContext(typeof(LostUALDbContext))]
-    partial class LostUALDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260208164546_ModerationReportResolutionAndActions")]
+    partial class ModerationReportResolutionAndActions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.12");
@@ -143,9 +146,6 @@ namespace LostUAL.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("BlockedUserId")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("ConversationId")
                         .HasColumnType("INTEGER");
 
@@ -154,9 +154,6 @@ namespace LostUAL.Data.Migrations
 
                     b.Property<bool>("IsOpen")
                         .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("LockoutEndUtc")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("ModeratorNote")
                         .HasColumnType("TEXT");
@@ -169,14 +166,14 @@ namespace LostUAL.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("Resolution")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("ResolvedAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ResolvedByUserId")
                         .HasColumnType("TEXT");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -284,6 +281,41 @@ namespace LostUAL.Data.Migrations
                     b.HasIndex("ConversationId", "CreatedAtUtc");
 
                     b.ToTable("Messages");
+                });
+
+            modelBuilder.Entity("LostUAL.Data.Entities.ModerationAction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ActionType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ActorUserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MetadataJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ReportId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TargetUserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportId");
+
+                    b.ToTable("ModerationActions");
                 });
 
             modelBuilder.Entity("LostUAL.Data.Entities.Notification", b =>
@@ -621,6 +653,16 @@ namespace LostUAL.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Conversation");
+                });
+
+            modelBuilder.Entity("LostUAL.Data.Entities.ModerationAction", b =>
+                {
+                    b.HasOne("LostUAL.Data.Entities.ConversationReport", "Report")
+                        .WithMany()
+                        .HasForeignKey("ReportId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Report");
                 });
 
             modelBuilder.Entity("LostUAL.Data.Entities.Report", b =>

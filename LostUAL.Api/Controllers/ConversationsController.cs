@@ -226,11 +226,25 @@ public class ConversationsController : ControllerBase
         if (!(isOwner || isClaimant))
             return Forbid();
 
+        var alreadyOpen = await _db.ConversationReports.AnyAsync(r =>
+            r.ConversationId == id &&
+            r.ReporterUserId == userId &&
+            r.Status == ReportStatus.Open, ct);
+
+        if (alreadyOpen)
+            return BadRequest("Ya tienes un reporte abierto para esta conversación.");
+
+        var reason = (dto?.Reason ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(reason))
+            return BadRequest("El motivo no puede estar vacío.");
+
         _db.ConversationReports.Add(new ConversationReport
         {
             ConversationId = id,
             ReporterUserId = userId,
-            Reason = (dto?.Reason ?? "").Trim()
+            Reason = (dto?.Reason ?? "").Trim(),
+            CreatedAtUtc = DateTime.UtcNow,
+            Status = ReportStatus.Open
         });
 
         await _db.SaveChangesAsync(ct);

@@ -20,7 +20,7 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<ConversationReport> ConversationReports => Set<ConversationReport>();
-
+   
 
 
 
@@ -103,7 +103,6 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
             .WithMany()
             .HasForeignKey(r => r.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
-
 
         modelBuilder.Entity<Message>()
             .HasIndex(m => new { m.ConversationId, m.CreatedAtUtc });

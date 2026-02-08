@@ -68,6 +68,7 @@ builder.Services
         options.Password.RequireNonAlphanumeric = false;
         options.Password.RequiredLength = 6;
         options.User.RequireUniqueEmail = true;
+        options.Lockout.AllowedForNewUsers = true;
     })
     .AddRoles<IdentityRole>()               
     .AddEntityFrameworkStores<LostUALDbContext>()
@@ -126,9 +127,16 @@ builder.Services.AddAuthentication(options =>
             var auth = ctx.Request.Headers.Authorization.ToString();
             logger.LogInformation("Authorization header: {Auth}", auth);
 
+           
+            logger.LogInformation("Request: {Method} {Path}{Query}",
+                ctx.HttpContext.Request.Method,
+                ctx.HttpContext.Request.Path,
+                ctx.HttpContext.Request.QueryString);
+            
             return Task.CompletedTask;
-        },
 
+        },
+        /*
         OnTokenValidated = ctx =>
         {
             var logger = ctx.HttpContext.RequestServices
@@ -137,7 +145,45 @@ builder.Services.AddAuthentication(options =>
 
             logger.LogInformation("JWT OK. User: {Name}", ctx.Principal?.Identity?.Name);
             return Task.CompletedTask;
+        },*/
+
+        OnTokenValidated = async ctx =>
+        {
+            var logger = ctx.HttpContext.RequestServices
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger("JWT");
+
+            var userId = ctx.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                ctx.Fail("Missing NameIdentifier");
+                return;
+            }
+
+            var userManager = ctx.HttpContext.RequestServices
+                .GetRequiredService<UserManager<ApplicationUser>>();
+
+            var user = await userManager.FindByIdAsync(userId);
+
+            if (user is null)
+            {
+                ctx.Fail("User not found");
+                return;
+            }
+
+            if (await userManager.IsLockedOutAsync(user))
+            {
+                var end = await userManager.GetLockoutEndDateAsync(user);
+                logger.LogWarning("JWT rejected: user {UserId} locked out until {End}", userId, end);
+
+                ctx.Fail("User locked out");
+                return;
+            }
+
+            logger.LogInformation("JWT OK. User: {Name}", ctx.Principal?.Identity?.Name);
         },
+
 
         OnAuthenticationFailed = ctx =>
         {

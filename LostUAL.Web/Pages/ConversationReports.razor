@@ -1,0 +1,122 @@
+﻿@page "/conversation-reports"
+@attribute [Authorize(Roles = "Moderator,Admin")]
+@using System.Net.Http.Json
+@using LostUAL.Contracts.Reports
+@inject HttpClient Http
+@inject NavigationManager Nav
+
+<h3>Moderación · Reportes de conversaciones</h3>
+
+@if (!string.IsNullOrWhiteSpace(Error))
+{
+    <div class="alert alert-danger">@Error</div>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label">Estado</label>
+                <select class="form-select" @bind="SelectedStatus">
+                    <option value="">(Todos)</option>
+                    <option value="@ReportStatus.Open">Open</option>
+                    <option value="@ReportStatus.Dismissed">Dismissed</option>
+                    <option value="@ReportStatus.ActionTaken">ActionTaken</option>
+                </select>
+            </div>
+
+            <div class="col-12 col-md-2 d-grid">
+                <button class="btn btn-primary" @onclick="Load" disabled="@IsLoading">
+                    @(IsLoading ? "Cargando..." : "Refrescar")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Items is null)
+{
+    <p>Cargando...</p>
+}
+else if (Items.Count == 0)
+{
+    <p>No hay reportes.</p>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var r in Items)
+        {
+            <button type="button"
+                    class="list-group-item list-group-item-action"
+                    @onclick="() => GoToConversation(r.ConversationId, r.Id)">
+
+                <div class="d-flex justify-content-between">
+                    <div class="fw-semibold text-truncate" style="max-width: 75%;">
+                        @TitleFor(r)
+                    </div>
+                    <span class="badge bg-secondary">@r.Status</span>
+                </div>
+
+                <div class="text-muted mt-1">
+                    Reporter: <strong>@r.ReporterEmail</strong>
+                    · @r.CreatedAtUtc.ToLocalTime()
+                </div>
+
+                @if (r.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(r.BlockedEmail))
+                {
+                    <div class="text-muted">
+                        Bloqueado: <strong>@r.BlockedEmail</strong>
+                        @if (r.LockoutEndUtc is not null)
+                        {
+                            <span> · Hasta: @r.LockoutEndUtc.Value.ToLocalTime()</span>
+                        }
+                    </div>
+                }
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private List<ConversationReportListItemDto>? Items;
+    private string? Error;
+    private bool IsLoading;
+
+    private ReportStatus? SelectedStatus;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        Error = null;
+        IsLoading = true;
+
+        try
+        {
+            var url = "api/moderation/conversations/reports";
+            if (SelectedStatus is not null)
+                url += $"?status={SelectedStatus}";
+
+            Items = await Http.GetFromJsonAsync<List<ConversationReportListItemDto>>(url);
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void GoToConversation(int conversationId, int reportId)
+        => Nav.NavigateTo($"/conversations/{conversationId}?reportId={reportId}");
+
+
+    private static string TitleFor(ConversationReportListItemDto r)
+    {
+        var t = (r.Reason ?? "").Trim();
+        return string.IsNullOrWhiteSpace(t) ? "(Sin descripción)" : t;
+    }
+}
