@@ -5,6 +5,7 @@ using LostUAL.Data.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SQLitePCL;
 using System.Security.Claims;
 
 namespace LostUAL.Api.Controllers;
@@ -81,6 +82,26 @@ public class ConversationsController : ControllerBase
                 m.CreatedAtUtc
             })
             .ToListAsync(ct);
+        var senderIds = items.Select(x => x.SenderUserId).Distinct().ToList();
+
+        var emails = await _db.Users
+            .AsNoTracking()
+            .Where(u => senderIds.Contains(u.Id))
+            .Select(u => new { u.Id, u.Email })
+            .ToDictionaryAsync(x => x.Id, x => x.Email, ct);
+
+        var items2 = items.Select(m =>
+        {
+            emails.TryGetValue(m.SenderUserId, out var email);
+            return new MessageDto
+            {
+                Id = m.Id,
+                SenderUserId = m.SenderUserId,
+                SenderEmail = email,
+                Body = m.Body,
+                CreatedAtUtc = m.CreatedAtUtc
+            };
+        }).ToList();
 
         return Ok(new
         {
@@ -95,7 +116,7 @@ public class ConversationsController : ControllerBase
             ownerConfirmedAtUtc = info.OwnerConfirmedAtUtc,
             claimantConfirmedAtUtc = info.ClaimantConfirmedAtUtc,
             autoResolveAtUtc = info.AutoResolveAtUtc,
-            messages = items
+            messages = items2
         });
 
     }

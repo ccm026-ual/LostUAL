@@ -91,14 +91,28 @@ else
         {
             @foreach (var m in _messages)
             {
-                <div class="mb-3">
+                @*<div class="mb-3">
                     <div class="small text-muted">
                         @m.CreatedAtUtc.ToLocalTime()
                     </div>
                     <div>
                         <b>@ShortUser(m.SenderUserId)</b>: @m.Body
                     </div>
+                </div>*@
+                @*@<div class="small text-muted">
+                    @(string.IsNullOrWhiteSpace(m.SenderEmail) ? m.SenderUserId : m.SenderEmail)
+                    · @m.CreatedAtUtc.ToLocalTime()
                 </div>
+                <div>@m.Body</div>*@
+                <div class="mb-3">
+                    <div class="small text-muted">
+                        @m.CreatedAtUtc.ToLocalTime()
+                    </div>
+                    <div>
+                        <b>@m.SenderEmail</b>: @m.Body
+                    </div>
+                </div>
+
             }
         }
     </div>
@@ -246,19 +260,6 @@ else
 
 
         public List<MessageDto>? Messages { get; set; }
-    }
-
-    private sealed class MessageDto
-    {
-        public int Id { get; set; }
-        public string SenderUserId { get; set; } = "";
-        public string Body { get; set; } = "";
-        public DateTime CreatedAtUtc { get; set; }
-    }
-
-    private sealed class SendDto
-    {
-        public string Body { get; set; } = "";
     }
 
     private async Task AcceptAsync()
