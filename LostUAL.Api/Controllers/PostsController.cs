@@ -395,6 +395,15 @@ public class PostsController : ControllerBase
 
         _db.Conversations.Add(conversation);
 
+        var now = DateTime.UtcNow;
+
+        conversation.LastMessageAtUtc = now;
+        conversation.LastMessageByUserId = userId;
+
+        conversation.ClaimantLastReadAtUtc = now;
+        conversation.OwnerLastReadAtUtc = null;
+
+
         await _db.SaveChangesAsync(ct);
 
         return Created($"/api/claims/{claim.Id}", new { claimId = claim.Id, conversationId = conversation.Id });

@@ -75,7 +75,12 @@ else
                     </td>
                     <td>
                         @(!string.IsNullOrWhiteSpace(c.ClaimantEmail) ? c.ClaimantEmail : c.ClaimantUserId)
+                        @if (c.HasUnread)
+                        {
+                            <span class="badge bg-warning text-dark ms-2">Nuevo</span>
+                        }
                     </td>
+
                     <td>@c.Status</td>
                     <td>@c.CreatedAtUtc.ToLocalTime()</td>
                     <td class="text-end">

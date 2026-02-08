@@ -3,6 +3,7 @@ using System;
 using LostUAL.Data.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LostUAL.Data.Migrations
 {
     [DbContext(typeof(LostUALDbContext))]
-    partial class LostUALDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260208133022_ConversationUnreadAndReports")]
+    partial class ConversationUnreadAndReports
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.12");
@@ -111,19 +114,7 @@ namespace LostUAL.Data.Migrations
                     b.Property<int>("ClaimId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTime?>("ClaimantLastReadAtUtc")
-                        .HasColumnType("TEXT");
-
                     b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("LastMessageAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LastMessageByUserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("OwnerLastReadAtUtc")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("Status")

@@ -19,6 +19,8 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Report> Reports => Set<Report>();
+    public DbSet<ConversationReport> ConversationReports => Set<ConversationReport>();
+
 
 
 
@@ -26,7 +28,6 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(modelBuilder);
 
-        // DateOnly en SQLite: lo guardamos como string "yyyy-MM-dd"
         var dateOnlyConverter = new ValueConverter<DateOnly, string>(
             d => d.ToString("yyyy-MM-dd"),
             s => DateOnly.Parse(s)
@@ -96,6 +97,13 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
             .WithMany()
             .HasForeignKey(p => p.WinningClaimId)
             .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<ConversationReport>()
+            .HasOne(r => r.Conversation)
+            .WithMany()
+            .HasForeignKey(r => r.ConversationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
 
         modelBuilder.Entity<Message>()
             .HasIndex(m => new { m.ConversationId, m.CreatedAtUtc });

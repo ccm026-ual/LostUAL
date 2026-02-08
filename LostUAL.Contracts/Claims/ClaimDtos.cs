@@ -25,7 +25,8 @@ public sealed record MyClaimListItemDto(
     PostType PostType,
     ClaimStatus Status,
     DateTime CreatedAtUtc,
-    int? ConversationId
+    int? ConversationId,
+    bool HasUnread
 );
 
 public sealed record InboxClaimListItemDto(
@@ -37,5 +38,6 @@ public sealed record InboxClaimListItemDto(
     DateTime CreatedAtUtc,
     string ClaimantUserId,
     string? ClaimantEmail,
-    int? ConversationId
+    int? ConversationId,
+    bool HasUnread
 );

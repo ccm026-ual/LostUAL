@@ -1,5 +1,6 @@
 ﻿using LostUAL.Contracts.Chat;
 using LostUAL.Contracts.Claims;
+using LostUAL.Contracts.Reports;
 using LostUAL.Data.Entities;
 using LostUAL.Data.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -32,6 +33,13 @@ public class ConversationsController : ControllerBase
 
         var isMod = User.IsInRole("Admin") || User.IsInRole("Moderator");
 
+        var conv = await _db.Conversations
+        .Include(c => c.Claim).ThenInclude(cl => cl.Post)
+        .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+        if (conv is null)
+            return NotFound();
+
         var info = await _db.Conversations
             .AsNoTracking()
             .Where(c => c.Id == id)
@@ -57,8 +65,17 @@ public class ConversationsController : ControllerBase
         var isOwner = userId == info.OwnerId;
         var isClaimant = userId == info.ClaimantId;
 
+        var hasOpenReport = isMod && await _db.ConversationReports
+        .AsNoTracking()
+        .AnyAsync(r => r.ConversationId == id && r.IsOpen, ct);
+        
+        if (!(isOwner || isClaimant || hasOpenReport))
+            return Forbid();
+
         var canAccept = isOwner && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
         var canReject = (isOwner || isMod) && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
+        var canSend = (isOwner || isClaimant) && conv.Status == ConversationStatus.Active;
+        var canReport = (isOwner || isClaimant);
 
         var canConfirm =
             info.ClaimStatus == ClaimStatus.Accepted &&
@@ -103,6 +120,13 @@ public class ConversationsController : ControllerBase
             };
         }).ToList();
 
+        var now = DateTime.UtcNow;
+        if (isOwner) conv.OwnerLastReadAtUtc = now;
+        if (isClaimant) conv.ClaimantLastReadAtUtc = now;
+
+        if (isOwner || isClaimant)
+            await _db.SaveChangesAsync(ct);
+
         return Ok(new
         {
             conversationId = id,
@@ -113,6 +137,8 @@ public class ConversationsController : ControllerBase
             canReject,
             canConfirm,
             canWithdraw,
+            canSend,
+            canReport,
             ownerConfirmedAtUtc = info.OwnerConfirmedAtUtc,
             claimantConfirmedAtUtc = info.ClaimantConfirmedAtUtc,
             autoResolveAtUtc = info.AutoResolveAtUtc,
@@ -147,10 +173,10 @@ public class ConversationsController : ControllerBase
         var isOwner = conv.Claim.Post.CreatedByUserId == userId;
         var isClaimant = conv.Claim.ClaimantUserId == userId;
 
-        if (!(isOwner || isClaimant || isMod))
+        if (!(isOwner || isClaimant))
             return Forbid();
 
-        if (conv.Status == ConversationStatus.ReadOnly && !isMod)
+        if (conv.Status == ConversationStatus.ReadOnly)
             return BadRequest("La conversación está en solo lectura.");
 
         var msg = new Message
@@ -162,6 +188,14 @@ public class ConversationsController : ControllerBase
         };
 
         _db.Messages.Add(msg);
+
+        var now = DateTime.UtcNow;
+
+        conv.LastMessageAtUtc = now;
+        conv.LastMessageByUserId = userId;
+        if (isOwner) conv.OwnerLastReadAtUtc = now;
+        if (isClaimant) conv.ClaimantLastReadAtUtc = now;
+
         await _db.SaveChangesAsync(ct);
 
         return Ok(new
@@ -172,4 +206,35 @@ public class ConversationsController : ControllerBase
             msg.CreatedAtUtc
         });
     }
+
+    [HttpPost("{id:int}/report")]
+    public async Task<IActionResult> Report(int id, [FromBody] ReportDto dto, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var conv = await _db.Conversations
+            .Include(c => c.Claim).ThenInclude(cl => cl.Post)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+        if (conv is null) return NotFound();
+
+        var isOwner = conv.Claim.Post.CreatedByUserId == userId;
+        var isClaimant = conv.Claim.ClaimantUserId == userId;
+
+        if (!(isOwner || isClaimant))
+            return Forbid();
+
+        _db.ConversationReports.Add(new ConversationReport
+        {
+            ConversationId = id,
+            ReporterUserId = userId,
+            Reason = (dto?.Reason ?? "").Trim()
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
 }

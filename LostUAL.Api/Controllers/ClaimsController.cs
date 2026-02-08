@@ -35,7 +35,12 @@ public class ClaimsController : ControllerBase
                 c.Post!.Type,
                 c.Status,
                 c.CreatedAtUtc,
-                c.Conversation != null ? (int?)c.Conversation.Id : null
+                c.Conversation != null ? (int?)c.Conversation.Id : null,
+                c.Conversation != null
+                    && c.Conversation.LastMessageAtUtc != null
+                    && c.Conversation.LastMessageByUserId != userId
+                    && (c.Conversation.ClaimantLastReadAtUtc == null
+                    || c.Conversation.LastMessageAtUtc > c.Conversation.ClaimantLastReadAtUtc)
             ))
             .ToListAsync(ct);
 
@@ -67,7 +72,12 @@ public class ClaimsController : ControllerBase
                 c.CreatedAtUtc,
                 c.ClaimantUserId,
                 _db.Users.Where(u => u.Id == c.ClaimantUserId).Select(u => u.Email).FirstOrDefault(),
-                c.Conversation != null ? (int?)c.Conversation.Id : null
+                c.Conversation != null ? (int?)c.Conversation.Id : null,
+                c.Conversation != null
+                    && c.Conversation.LastMessageAtUtc != null
+                    && c.Conversation.LastMessageByUserId != userId
+                    && (c.Conversation.OwnerLastReadAtUtc == null
+                    || c.Conversation.LastMessageAtUtc > c.Conversation.OwnerLastReadAtUtc)
             ))
             .ToListAsync(ct);
 

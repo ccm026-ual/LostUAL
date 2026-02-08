@@ -39,7 +39,12 @@ else
                     <td>@c.PostTitle</td>
                     <td>@c.PostType</td>
                     <td>@c.Status</td>
-                    <td>@c.CreatedAtUtc.ToLocalTime()</td>
+                    <td>@c.CreatedAtUtc.ToLocalTime()
+                        @if (c.HasUnread)
+                        {
+                            <span class="badge bg-warning text-dark ms-2">Nuevo</span>
+                        }
+                    </td>
                     <td class="text-end">
                         @if (c.ConversationId is int convId)
                         {
