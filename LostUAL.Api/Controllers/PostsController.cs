@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Hosting;
 
 
 namespace LostUAL.Api.Controllers;
@@ -20,8 +21,12 @@ namespace LostUAL.Api.Controllers;
 public class PostsController : ControllerBase
 {
     private readonly LostUALDbContext _db;
-
-    public PostsController(LostUALDbContext db) => _db = db;
+    private readonly IWebHostEnvironment _env;
+    public PostsController(LostUALDbContext db, IWebHostEnvironment env)
+    {
+        _db = db;
+        _env = env;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<PostListItemDto>>> Get()
@@ -104,7 +109,8 @@ public class PostsController : ControllerBase
                 p.DateApprox,
                 p.Status,
                 p.CreatedAtUtc,
-                p.CreatedByUserId
+                p.CreatedByUserId,
+                p.PhotoUrl
             ))
             .FirstOrDefaultAsync(ct);
 
@@ -528,5 +534,59 @@ public class PostsController : ControllerBase
 
         return Ok(new PagedResult<PostListItemDto>(items, page, pageSize, total));
     }
+
+    [HttpPost("{id:int}/photo")]
+    [Authorize]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<ActionResult> UploadPhoto(int id, IFormFile file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest("No file uploaded.");
+
+        if (file.Length > 5_000_000)
+            return BadRequest("Imagen demasiado grande (máx 5MB).");
+
+        if (string.IsNullOrWhiteSpace(file.ContentType) || !file.ContentType.StartsWith("image/"))
+            return BadRequest("El archivo debe ser una imagen.");
+
+        var post = await _db.Posts.FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (post is null) return NotFound();
+
+        if (post.Type != PostType.Lost)
+            return BadRequest("Solo se permite foto en posts tipo Lost.");
+
+        var allowedExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    { ".jpg", ".jpeg", ".png", ".webp" };
+
+        var ext = Path.GetExtension(file.FileName);
+        if (!allowedExt.Contains(ext))
+            return BadRequest("Formato no permitido. Usa jpg/png/webp.");
+
+        if (!string.IsNullOrWhiteSpace(post.PhotoUrl) && post.PhotoUrl.StartsWith("/uploads/"))
+        {
+            var oldRelative = post.PhotoUrl.Replace("/uploads/", ""); 
+            var oldFull = Path.Combine(_env.ContentRootPath, "Uploads", oldRelative.Replace('/', Path.DirectorySeparatorChar));
+
+            if (System.IO.File.Exists(oldFull))
+                System.IO.File.Delete(oldFull);
+        }
+
+        var postsDir = Path.Combine(_env.ContentRootPath, "Uploads", "posts");
+        Directory.CreateDirectory(postsDir);
+
+        var filename = $"{Guid.NewGuid():N}{ext}";
+        var fullPath = Path.Combine(postsDir, filename);
+
+        await using (var stream = System.IO.File.Create(fullPath))
+            await file.CopyToAsync(stream, ct);
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        post.PhotoUrl = $"{baseUrl}/uploads/posts/{filename}";
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new { post.Id, post.PhotoUrl });
+    }
+
 
 }

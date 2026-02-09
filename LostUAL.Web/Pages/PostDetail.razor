@@ -182,6 +182,14 @@ else if (post is not null)
 
             <p class="mb-2">@post.Description</p>
 
+            @if (post.Type == PostType.Lost && !string.IsNullOrWhiteSpace(post.PhotoUrl))
+            {
+                <img src="@post.PhotoUrl"
+                     class="img-fluid rounded mt-3"
+                     style="max-height:420px; object-fit:cover;"
+                     alt="Foto del post" />
+            }
+
             <div class="text-muted small">
                 Creado: @post.CreatedAtUtc
             </div>

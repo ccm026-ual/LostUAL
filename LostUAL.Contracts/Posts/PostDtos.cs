@@ -55,7 +55,8 @@ public sealed record PostDetailDto(
     DateOnly DateApprox,
     PostStatus Status,
     DateTime CreatedAtUtc,
-    string CreatedByUserId
+    string CreatedByUserId,
+    string? PhotoUrl
 );
 
 public sealed record PostPreviewDto(

@@ -33,5 +33,7 @@ public class ItemPost
     public DateTime? ClosedAtUtc { get; set; }
     public string? ClosedByUserId { get; set; }
     public string? ClosedReason { get; set; }
+    public string? PhotoUrl { get; set; }
+
 }
 

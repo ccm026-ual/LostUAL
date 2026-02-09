@@ -4,6 +4,7 @@
 @using LostUAL.Contracts.Posts
 @using LostUAL.Contracts.Lookups
 @using System.Net.Http.Json
+@using System.Net.Http.Headers
 
 <h3>Nuevo Post</h3>
 
@@ -34,6 +35,28 @@ else
             <label class="form-label">Descripción</label>
             <InputTextArea class="form-control" @bind-Value="model.Description" />
         </div>
+        
+        @if (model.Type == PostType.Lost)
+        {
+            <div class="mb-3">
+                <label class="form-label">Foto (opcional)</label>
+                <InputFile OnChange="OnFileSelected" accept="image/*" />
+
+                @if (_photo is not null)
+                {
+                    <div class="form-text">
+                        Seleccionada: @_photo.Name
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_photoError))
+                {
+                    <div class="text-danger small">@_photoError</div>
+                }
+
+                <div class="form-text">Máximo 5MB. Formatos: jpg/png/webp.</div>
+            </div>
+        }
 
         <div class="row">
             <div class="col-md-6 mb-3">
@@ -85,10 +108,36 @@ else
     private bool isSubmitting;
     private string? message;
 
+    private IBrowserFile? _photo;
+    private string? _photoError;
+    private const long MaxPhotoBytes = 5_000_000;
+
     protected override async Task OnInitializedAsync()
     {
         categories = await Http.GetFromJsonAsync<List<LookupItemDto>>("api/lookups/categories");
         locations = await Http.GetFromJsonAsync<List<LookupItemDto>>("api/lookups/locations");
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _photoError = null;
+        _photo = null;
+
+        var f = e.File;
+
+        if (f.Size > MaxPhotoBytes)
+        {
+            _photoError = "La imagen supera 5MB.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(f.ContentType) || !f.ContentType.StartsWith("image/"))
+        {
+            _photoError = "El archivo debe ser una imagen.";
+            return;
+        }
+
+        _photo = f;
     }
 
     private async Task HandleSubmit()
@@ -96,6 +145,12 @@ else
         if (model.CategoryId <= 0 || model.LocationId <= 0)
         {
             message = "Selecciona categoría y ubicación.";
+            return;
+        }
+
+        if (model.Type == PostType.Lost && !string.IsNullOrWhiteSpace(_photoError))
+        {
+            message = "Revisa la foto seleccionada.";
             return;
         }
 
@@ -113,12 +168,49 @@ else
 
         var resp = await Http.PostAsJsonAsync("api/posts", request);
 
-        if (resp.IsSuccessStatusCode)
-            message = "¡Post creado!";
-        else
+        if (!resp.IsSuccessStatusCode)
+        {
             message = $"Error creando post: {(int)resp.StatusCode}";
+            isSubmitting = false;
+            return;
+        }
 
+        var created = await resp.Content.ReadFromJsonAsync<PostListItemDto>();
+
+        if (created is null)
+        {
+            message = "¡Post creado! (no pude leer la respuesta del servidor)";
+            isSubmitting = false;
+            return;
+        }
+
+        if (model.Type == PostType.Lost && _photo is not null)
+        {
+            using var form = new MultipartFormDataContent();
+
+            await using var stream = _photo.OpenReadStream(MaxPhotoBytes);
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(_photo.ContentType);
+
+            form.Add(fileContent, "file", _photo.Name);
+
+            var uploadResp = await Http.PostAsync($"api/posts/{created.Id}/photo", form);
+
+            if (!uploadResp.IsSuccessStatusCode)
+            {
+                message = $"¡Post creado! Pero error subiendo foto: {(int)uploadResp.StatusCode}";
+                isSubmitting = false;
+                return;
+            }
+        }
+
+        message = "¡Post creado!";
         isSubmitting = false;
+
+        model = new CreatePostRequestModel();
+        date = DateTime.Today;
+        _photo = null;
+        _photoError = null;
     }
 
     private sealed class CreatePostRequestModel

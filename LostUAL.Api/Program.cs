@@ -10,6 +10,7 @@ using Microsoft.OpenApi;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -213,6 +214,15 @@ builder.Services.AddAuthorization();
 
 
 var app = builder.Build();
+
+var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "Uploads");
+Directory.CreateDirectory(uploadsPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 if (app.Environment.IsDevelopment())
 {
