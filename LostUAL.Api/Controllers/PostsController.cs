@@ -1,7 +1,8 @@
-﻿using LostUAL.Contracts.Claims;
+﻿using LostUAL.Contracts.Chat;
+using LostUAL.Contracts.Claims;
 using LostUAL.Contracts.Posts;
 using LostUAL.Contracts.Reports;
-using LostUAL.Contracts.Chat;
+using LostUAL.Contracts.Shared;
 using LostUAL.Data.Entities;
 using LostUAL.Data.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -453,6 +454,79 @@ public class PostsController : ControllerBase
         return NoContent();
     }
 
+    [HttpGet("public-preview")]
+    [AllowAnonymous]
+    public async Task<ActionResult<List<PostPreviewDto>>> GetPublicPreview([FromQuery] int take = 10)
+    {
+        take = Math.Clamp(take, 1, 50);
 
+        var posts = await _db.Posts
+            .AsNoTracking()
+            .OrderByDescending(p => p.CreatedAtUtc)
+            .Take(take)
+            .Select(p => new PostPreviewDto(
+                p.Id,
+                p.Title,
+                p.Description,
+                p.CreatedAtUtc
+            ))
+            .ToListAsync();
+
+        return Ok(posts);
+    }
+
+    [HttpGet("paged")]
+    public async Task<ActionResult<PagedResult<PostListItemDto>>> GetPaged([FromQuery] PostsQuery query, CancellationToken ct)
+    {
+        var page = Math.Max(1, query.Page);
+        var pageSize = Math.Clamp(query.PageSize, 5, 50);
+
+        var q = _db.Posts
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (query.Type is not null)
+            q = q.Where(p => p.Type == query.Type);
+
+        if (query.Status is not null)
+            q = q.Where(p => p.Status == query.Status);
+
+        if (query.CategoryId is not null)
+            q = q.Where(p => p.CategoryId == query.CategoryId);
+
+        if (query.LocationId is not null)
+            q = q.Where(p => p.LocationId == query.LocationId);
+
+        if (query.FromCreatedAtUtc is not null)
+            q = q.Where(p => p.CreatedAtUtc >= query.FromCreatedAtUtc);
+
+        if (query.ToCreatedAtUtc is not null)
+        {
+         
+            var toExclusive = query.ToCreatedAtUtc.Value.Date.AddDays(1);
+            q = q.Where(p => p.CreatedAtUtc < toExclusive);
+        }
+
+        var total = await q.CountAsync(ct);
+
+        var items = await q
+            .OrderByDescending(p => p.CreatedAtUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new PostListItemDto(
+                p.Id,
+                p.Type,
+                p.Title,
+                p.Category.Name,
+                p.Location.Name,
+                p.DateApprox,
+                p.Status,
+                p.CreatedAtUtc
+            ))
+            .ToListAsync(ct);
+
+
+        return Ok(new PagedResult<PostListItemDto>(items, page, pageSize, total));
+    }
 
 }

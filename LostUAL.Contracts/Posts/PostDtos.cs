@@ -58,6 +58,24 @@ public sealed record PostDetailDto(
     string CreatedByUserId
 );
 
+public sealed record PostPreviewDto(
+    int Id,
+    string Title,
+    string Description,
+    DateTime CreatedAtUtc
+    );
+
+public sealed record PostsQuery(
+    int Page = 1,
+    int PageSize = 10,
+    PostType? Type = null,
+    PostStatus? Status = null,
+    int? CategoryId = null,
+    int? LocationId = null,
+    DateTime? FromCreatedAtUtc = null,
+    DateTime? ToCreatedAtUtc = null
+);
+
 public sealed class ClosePostRequest
 {
     public string? Reason { get; set; }

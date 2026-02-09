@@ -1,7 +1,350 @@
 ﻿@page "/"
+@inject HttpClient Http
+@using LostUAL.Contracts.Posts
+@using LostUAL.Contracts.Shared
+@using LostUAL.Contracts.Lookups
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
 
-<PageTitle>Home</PageTitle>
+<AuthorizeView>
+    <Authorized>
+        <h3> Posts publicados</h3>
+        @if (items is null)
+        {
+            <p>Cargando...</p>
+        }
+        else
+        {
 
-<h1>Hello, world!</h1>
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="row g-3">
 
-Welcome to your new app.
+                        <div class="col-12 col-lg-3">
+                            <label class="form-label">Tipo</label>
+                            <InputSelect class="form-select" TValue="PostType?" @bind-Value="_type">
+                                <option value="">Todos</option>
+                                @foreach (var t in Enum.GetValues<PostType>())
+                                {
+                                    <option value="@t">@t</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-12 col-lg-3">
+                            <label class="form-label">Estado</label>
+                            <InputSelect class="form-select" TValue="PostStatus?" @bind-Value="_status">
+                                <option value="">Todos</option>
+                                @foreach (var s in Enum.GetValues<PostStatus>())
+                                {
+                                    <option value="@s">@s</option>
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-12 col-lg-3">
+                            <label class="form-label">Categoría</label>
+                            <InputSelect class="form-select" TValue="int?" @bind-Value="_categoryId">
+                                <option value="">Todas</option>
+                                @if (_categories is not null)
+                                {
+                                    @foreach (var c in _categories)
+                                    {
+                                        <option value="@c.Id">@c.Name</option>
+                                    }
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-12 col-lg-3">
+                            <label class="form-label">Location</label>
+                            <InputSelect class="form-select" TValue="int?" @bind-Value="_locationId">
+                                <option value="">Todas</option>
+                                @if (_locations is not null)
+                                {
+                                    @foreach (var l in _locations)
+                                    {
+                                        <option value="@l.Id">@l.Name</option>
+                                    }
+                                }
+                            </InputSelect>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="row g-2 align-items-end justify-content-center">
+                                <div class="col-12 col-md-7 col-lg-6">
+                                    <label class="form-label">Fechas</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Desde</span>
+                                        <InputDate class="form-control" TValue="DateTime?" @bind-Value="_from" />
+                                        <span class="input-group-text">Hasta</span>
+                                        <InputDate class="form-control" TValue="DateTime?" @bind-Value="_to" />
+                                    </div>
+                                </div>
+
+                                <div class="col-6 col-md-2 col-lg-2">
+                                    <label class="form-label">Por página</label>
+                                    <select class="form-select" @bind="_pageSize">
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-6 col-md-2 col-lg-2 d-grid">
+                                    <button class="btn btn-primary" @onclick="ApplyFilters">Aplicar</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 d-flex align-items-center">
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="ClearFilters">Limpiar</button>
+                            <span class="text-muted small ms-auto">@_totalCount resultados</span>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="list-group">
+                @foreach (var p in items)
+                {
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <a href="" @onclick="() => OnPostClick(p)" @onclick:preventDefault="true">
+                                @p.Title
+                            </a>
+
+                            <span class="badge bg-secondary">@p.Type</span>
+                        </div>
+                        <small>@p.Category · @p.Location · @p.DateApprox</small>
+                        <div>
+                            <span class="badge bg-info">@p.Status</span>
+                            <small class="text-muted ms-2">@p.CreatedAtUtc</small>
+                        </div>
+                    </div>
+                }
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <button class="btn btn-outline-secondary"
+                        disabled="@(_page <= 1 || _loading)"
+                        @onclick="PrevPage">
+                    Anterior
+                </button>
+
+                <div class="text-muted">
+                    Página @_page de @TotalPages
+                </div>
+
+                <button class="btn btn-outline-secondary"
+                        disabled="@(_page >= TotalPages || _loading)"
+                        @onclick="NextPage">
+                    Siguiente
+                </button>
+            </div>
+
+
+            <LoginGateModal Show="_showGate" Item="_selected" OnClose="CloseGate" />
+
+        }
+    </Authorized>
+    <NotAuthorized>
+        <div class="container">
+            <div class="row g-4 align-items-stretch" style="min-height: 70vh;">
+                <div class="col-12 col-lg-7">
+                    <h3 class="mb-3">Últimos posts publicados</h3>
+                    <hr class="mt-0 mb-4" />
+
+                    @if (_preview is null)
+                    {
+                        <p>Cargando…</p>
+                    }
+                    else if (_preview.Count == 0)
+                    {
+                        <p>No hay posts publicados.</p>
+                    }
+                    else
+                    {
+                        <div class="d-flex flex-column gap-3">
+                            @foreach (var p in _preview)
+                            {
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title mb-1">@p.Title</h5>
+
+                                        <p class="card-text mb-2">@p.Description</p>
+
+                                        <div class="d-flex">
+                                            <div class="flex-grow-1"></div>
+                                            <small class="text-muted text-nowrap">
+                                                @p.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="col-12 col-lg-5">
+                    <div class="h-100 border-start ps-4 d-flex flex-column justify-content-center align-items-center text-center">
+                        <h4 class="mb-2">¿Quieres saber más?</h4>
+                        <p class="text-muted mb-3">Inicia sesión para publicar posts y realizar reclamaciones.</p>
+
+                        <button class="btn btn-primary" style="min-width: 180px;" @onclick="GoToLogin">
+                            Iniciar sesión
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </NotAuthorized>
+
+</AuthorizeView>
+
+@code {
+    private List<PostListItemDto>? items;
+    private List<PostPreviewDto>? _preview;
+
+    private bool _loading;
+    private int _page = 1;
+    private int _pageSize = 10;
+    private int _totalCount;
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(_totalCount / (double)_pageSize));
+
+    private PostType? _type;
+    private PostStatus? _status;
+    private int? _categoryId;
+    private int? _locationId;
+    private DateTime? _from;
+    private DateTime? _to;
+
+    private List<LookupItemDto>? _categories;
+    private List<LookupItemDto>? _locations;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var isAuthed = authState.User.Identity?.IsAuthenticated == true;
+
+        if (isAuthed)
+        {
+            _categories = await Http.GetFromJsonAsync<List<LookupItemDto>>("api/lookups/categories");
+            _locations = await Http.GetFromJsonAsync<List<LookupItemDto>>("api/lookups/locations");
+            await LoadPagedAsync();
+        }
+        else
+        {
+            _preview = await Http.GetFromJsonAsync<List<PostPreviewDto>>("api/posts/public-preview?take=4");
+        }
+    }
+
+    private bool _showGate;
+    private PostListItemDto? _selected;
+
+    private async Task OnPostClick(PostListItemDto p)
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var isAuthed = authState.User.Identity?.IsAuthenticated == true;
+
+        if (isAuthed)
+        {
+            Nav.NavigateTo($"/posts/{p.Id}");
+            return;
+        }
+
+        _selected = p;
+        _showGate = true;
+    }
+
+    private void GoToLogin()
+    {
+        Nav.NavigateTo("/login");
+    }
+
+    private Task CloseGate()
+    {
+        _showGate = false;
+        _selected = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadPagedAsync()
+    {
+        _loading = true;
+
+        var qs = new List<string>
+        {
+            $"page={_page}",
+            $"pageSize={_pageSize}"
+        };
+
+        if (_type is not null) qs.Add($"type={_type}");
+        if (_status is not null) qs.Add($"status={_status}");
+        if (_categoryId is not null) qs.Add($"categoryId={_categoryId}");
+        if (_locationId is not null) qs.Add($"locationId={_locationId}");
+        if (_from is not null) qs.Add($"fromCreatedAtUtc={Uri.EscapeDataString(_from.Value.ToString("O"))}");
+        if (_to is not null) qs.Add($"toCreatedAtUtc={Uri.EscapeDataString(_to.Value.ToString("O"))}");
+
+        var url = "api/posts/paged?" + string.Join("&", qs);
+
+        var result = await Http.GetFromJsonAsync<PagedResult<PostListItemDto>>(url);
+
+        items = result?.Items?.ToList() ?? new();
+        _totalCount = result?.TotalCount ?? 0;
+
+        if (_page > TotalPages)
+        {
+            _page = TotalPages;
+            _loading = false;
+            await LoadPagedAsync();
+            return;
+        }
+
+        _loading = false;
+    }
+
+    private async Task ApplyFilters()
+    {
+        _page = 1;
+        await LoadPagedAsync();
+    }
+
+    private async Task ClearFilters()
+    {
+        _type = null;
+        _status = null;
+        _categoryId = null;
+        _locationId = null;
+        _from = null;
+        _to = null;
+
+        _pageSize = 10;
+        _page = 1;
+
+        await LoadPagedAsync();
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page <= 1) return;
+        _page--;
+        await LoadPagedAsync();
+    }
+
+    private async Task NextPage()
+    {
+        if (_page >= TotalPages) return;
+        _page++;
+        await LoadPagedAsync();
+    }
+}
+
