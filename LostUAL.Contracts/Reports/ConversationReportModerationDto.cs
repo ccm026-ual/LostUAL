@@ -88,3 +88,14 @@ public sealed class ConversationReportSummaryDto
     public string? ModeratorNote { get; set; }
     public DateTime? ResolvedAtUtc { get; set; }
 }
+
+public sealed class BlockUserRequest
+{
+    public int Days { get; set; } = 7;
+    public string? Note { get; set; }
+}
+
+public sealed class DismissReportRequest
+{
+    public string? Note { get; set; }
+}

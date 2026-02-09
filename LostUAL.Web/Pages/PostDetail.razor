@@ -1,7 +1,9 @@
 ﻿@page "/posts/{Id:int}"
 @inject HttpClient Http
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.WebUtilities
 @using LostUAL.Contracts.Posts
+@using LostUAL.Contracts.Reports
 @using System.Net
 @using System.Security.Claims
 @using System.Net.Http.Json
@@ -24,6 +26,96 @@ else if (post is not null)
     <div class="card">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-start">
+                <AuthorizeView Roles="Moderator,Admin">
+                    <Authorized>
+                        @if (PostReportId is not null)
+                        {
+                            @if (PostReport is null && string.IsNullOrWhiteSpace(ModError))
+                            {
+                                <div class="alert alert-secondary">Cargando reporte...</div>
+                            }
+                            else
+                            {
+                                @* Panel *@
+                                <div class="card mb-3 border-warning">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <div class="fw-semibold">Reporte</div>
+
+                                                @if (!string.IsNullOrWhiteSpace(ModError))
+                                                {
+                                                    <div class="alert alert-danger mt-2 mb-0">@ModError</div>
+                                                }
+                                                else if (PostReport is not null)
+                                                {
+                                                    <div class="mt-1 fw-semibold">@PostReport.Reason</div>
+
+                                                    <div class="text-muted">
+                                                        Estado: <strong>@PostReport.Status</strong>
+                                                        · Reporter: <strong>@PostReport.ReporterEmail</strong>
+                                                        · Post: <strong>@PostReport.PostStatus</strong>
+                                                    </div>
+
+                                                    @if (PostReport.PostStatus.ToString() == "Closed")
+                                                    {
+                                                        <div class="text-muted">
+                                                            Cerrado: @PostReport.ClosedAtUtc?.ToLocalTime()
+                                                            @if (!string.IsNullOrWhiteSpace(PostReport.ClosedReason))
+                                                            {
+                                                                <span> · Motivo: @PostReport.ClosedReason</span>
+                                                            }
+                                                        </div>
+                                                    }
+
+                                                    @if (PostReport.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(PostReport.BlockedEmail))
+                                                    {
+                                                        <div class="text-muted">
+                                                            Bloqueado: <strong>@PostReport.BlockedEmail</strong>
+                                                            @if (PostReport.LockoutEndUtc is not null)
+                                                            {
+                                                                <span> · Hasta: @PostReport.LockoutEndUtc.Value.ToLocalTime()</span>
+                                                            }
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+
+                                            @if (PostReport?.Status == ReportStatus.Open)
+                                            {
+                                                <div style="min-width: 360px;">
+                                                    <div class="row g-2">
+                                                        <div class="col-4">
+                                                            <input class="form-control" type="number" min="1" @bind="BlockDays" />
+                                                        </div>
+                                                        <div class="col-8">
+                                                            <input class="form-control" placeholder="Nota (opcional)" @bind="ModNote" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="d-flex gap-2 mt-2">
+                                                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(ModBusy)" @onclick="DismissPostReport">
+                                                            Dismiss
+                                                        </button>
+
+                                                        <button type="button" class="btn btn-warning btn-sm" disabled="@(ModBusy)" @onclick="ClosePostFromReport">
+                                                            Close post
+                                                        </button>
+
+                                                        <button type="button" class="btn btn-danger btn-sm" disabled="@(ModBusy)" @onclick="CloseBlockFromReport">
+                                                            Close + Block
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </Authorized>
+                </AuthorizeView>
+
                 <div>
                     <h5 class="card-title mb-1">@post.Title</h5>
                     <div class="text-muted small">
@@ -59,6 +151,18 @@ else if (post is not null)
                                 }
                             </Authorized>
                         </AuthorizeView>
+                        <AuthorizeView>
+                            <Authorized>
+                                <button type="button" class="btn btn-outline-danger" @onclick="() => ShowReportModal = true">
+                                    Reportar post
+                                </button>
+
+                                <ReportPostModal PostId="@Id"
+                                                 IsOpen="@ShowReportModal"
+                                                 IsOpenChanged="@(v => ShowReportModal = v)" />
+                            </Authorized>
+                        </AuthorizeView>
+
 
                     </div>
 
@@ -102,9 +206,31 @@ else if (post is not null)
     private string? _myUserId;
     private bool _closing;
     private string? _closeError;
+    private bool ShowReportModal;
+
+    private int? PostReportId;
+    private PostReportSummaryDto? PostReport;
+
+    private string? ModError;
+    private bool ModBusy;
+    private int BlockDays = 7;
+    private string? ModNote;
+    private bool _loadedSummary;
+
 
     protected override async Task OnParametersSetAsync()
     {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var q = QueryHelpers.ParseQuery(uri.Query);
+
+        PostReportId = null;
+        if (q.TryGetValue("postReportId", out var rid) && int.TryParse(rid.ToString(), out var parsed))
+            PostReportId = parsed;
+
+        _loadedSummary = false;
+        PostReport = null;
+        ModError = null;
+
         await LoadPostAsync();
     }
 
@@ -252,6 +378,106 @@ else if (post is not null)
         {
             _claiming = false;
         }
+    }
+
+    private async Task LoadPostReportSummaryAsync(int reportId)
+    {
+        ModError = null;
+        try
+        {
+            PostReport = await Http.GetFromJsonAsync<PostReportSummaryDto>(
+                $"api/moderation/posts/reports/{reportId}/summary");
+        }
+        catch (Exception ex)
+        {
+            ModError = ex.Message;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+    
+        if (firstRender)
+            _loadedSummary = false;
+
+        if (!_loadedSummary && PostReportId is not null)
+        {
+            _loadedSummary = true;
+            await LoadPostReportSummaryAsync(PostReportId.Value);
+            StateHasChanged();
+        }
+    }
+
+    private async Task DismissPostReport()
+    {
+        if (PostReportId is null) return;
+        ModBusy = true; ModError = null;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/moderation/posts/reports/{PostReportId.Value}/dismiss",
+                new DismissReportRequest { Note = ModNote });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ModError = await res.Content.ReadAsStringAsync();
+                return;
+            }
+
+            await LoadPostReportSummaryAsync(PostReportId.Value);
+            await LoadPostAsync();
+        }
+        catch (Exception ex) { ModError = ex.Message; }
+        finally { ModBusy = false; }
+    }
+
+    private async Task ClosePostFromReport()
+    {
+        if (PostReportId is null) return;
+        ModBusy = true; ModError = null;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/moderation/posts/reports/{PostReportId.Value}/close",
+                new DismissReportRequest { Note = ModNote });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ModError = await res.Content.ReadAsStringAsync();
+                return;
+            }
+
+            await LoadPostReportSummaryAsync(PostReportId.Value);
+            await LoadPostAsync();
+        }
+        catch (Exception ex) { ModError = ex.Message; }
+        finally { ModBusy = false; }
+    }
+
+    private async Task CloseBlockFromReport()
+    {
+        if (PostReportId is null) return;
+        ModBusy = true; ModError = null;
+
+        try
+        {
+            var res = await Http.PostAsJsonAsync(
+                $"api/moderation/posts/reports/{PostReportId.Value}/close-block",
+                new BlockUserRequest { Days = BlockDays, Note = ModNote });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ModError = await res.Content.ReadAsStringAsync();
+                return;
+            }
+
+            await LoadPostReportSummaryAsync(PostReportId.Value);
+            await LoadPostAsync();
+        }
+        catch (Exception ex) { ModError = ex.Message; }
+        finally { ModBusy = false; }
     }
 
 

@@ -1,5 +1,6 @@
 ﻿using LostUAL.Contracts.Claims;
 using LostUAL.Contracts.Posts;
+using LostUAL.Contracts.Reports;
 using LostUAL.Contracts.Chat;
 using LostUAL.Data.Entities;
 using LostUAL.Data.Persistence;
@@ -121,14 +122,12 @@ public class PostsController : ControllerBase
         if (string.IsNullOrWhiteSpace(userId))
             return Unauthorized();
 
-        // 1) Validación mínima (evita FK inválidas)
         var categoryExists = await _db.Categories.AnyAsync(c => c.Id == request.CategoryId);
         var locationExists = await _db.Locations.AnyAsync(l => l.Id == request.LocationId);
 
         if (!categoryExists) return BadRequest("CategoryId no válido.");
         if (!locationExists) return BadRequest("LocationId no válido.");
 
-        // 2) Crear entidad
         var post = new ItemPost
         {
             CreatedByUserId = userId,
@@ -145,7 +144,6 @@ public class PostsController : ControllerBase
         _db.Posts.Add(post);
         await _db.SaveChangesAsync();
 
-        // 3) Cargar nombres para devolver DTO completo
         var result = await _db.Posts
             .Where(p => p.Id == post.Id)
             .Include(p => p.Category)
@@ -162,7 +160,6 @@ public class PostsController : ControllerBase
             ))
             .SingleAsync();
 
-        // 4) Devuelve 201 + Location header
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
 
     }
@@ -409,6 +406,52 @@ public class PostsController : ControllerBase
         return Created($"/api/claims/{claim.Id}", new { claimId = claim.Id, conversationId = conversation.Id });
     }
 
+    [HttpPost("{id:int}/report")]
+    [Authorize]
+    public async Task<IActionResult> ReportPost(int id, [FromBody] ReportDto dto, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var reason = (dto?.Reason ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(reason))
+            return BadRequest("El motivo no puede estar vacío.");
+
+        var post = await _db.Posts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+        if (post is null)
+            return NotFound();
+
+        if (post.CreatedByUserId == userId)
+            return BadRequest("No puedes reportar tu propio post.");
+
+        if (post.Status == PostStatus.Closed)
+            return BadRequest("Este post está cerrado y no se puede reportar.");
+
+        var alreadyOpen = await _db.PostReports.AnyAsync(r =>
+            r.PostId == id &&
+            r.ReporterUserId == userId &&
+            r.Status == ReportStatus.Open, ct);
+
+        if (alreadyOpen)
+            return BadRequest("Ya tienes un reporte abierto para este post.");
+
+        _db.PostReports.Add(new PostReport
+        {
+            PostId = id,
+            ReporterUserId = userId,
+            Reason = reason,
+            CreatedAtUtc = DateTime.UtcNow,
+            Status = ReportStatus.Open,
+            Action = PostReportAction.None
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
 
 
 

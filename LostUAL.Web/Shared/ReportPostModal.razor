@@ -1,0 +1,116 @@
+﻿@using LostUAL.Contracts.Reports
+@inject HttpClient Http
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Reportar post</h5>
+                        <small class="text-muted">Describe brevemente el motivo del reporte.</small>
+                    </div>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <textarea class="form-control"
+                              rows="5"
+                              placeholder="Escribe el motivo..."
+                              @bind="Reason"
+                              @bind:event="oninput"></textarea>
+
+                    @if (ShowEmptyError)
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">
+                            Escribe un motivo.
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(ApiError))
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">@ApiError</div>
+                    }
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" disabled="@(IsBusy)" @onclick="Close">
+                        Cerrar
+                    </button>
+
+                    <button type="button" class="btn btn-danger" disabled="@(IsBusy)" @onclick="SubmitAsync">
+                        Enviar reporte
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter] public int PostId { get; set; }
+
+    private string _reason = "";
+    private string Reason
+    {
+        get => _reason;
+        set
+        {
+            _reason = value;
+            if (!string.IsNullOrWhiteSpace(_reason))
+                ShowEmptyError = false;
+        }
+    }
+
+    private bool ShowEmptyError;
+    private string? ApiError;
+    private bool IsBusy;
+
+    private async Task Close()
+    {
+        ApiError = null;
+        ShowEmptyError = false;
+        Reason = "";
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task SubmitAsync()
+    {
+        ApiError = null;
+
+        var reason = (Reason ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            ShowEmptyError = true;
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var res = await Http.PostAsJsonAsync($"api/posts/{PostId}/report", new ReportDto { Reason = reason });
+
+            if (!res.IsSuccessStatusCode)
+            {
+                ApiError = await res.Content.ReadAsStringAsync();
+                return;
+            }
+
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            ApiError = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+}

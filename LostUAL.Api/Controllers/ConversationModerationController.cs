@@ -11,16 +11,6 @@ using System.Security.Claims;
 
 namespace LostUAL.Api.Controllers;
 
-public sealed class BlockUserRequest
-{
-    public int Days { get; set; } = 7;
-    public string? Note { get; set; }
-}
-
-public sealed class DismissReportRequest
-{
-    public string? Note { get; set; }
-}
 
 [ApiController]
 [Route("api/moderation/conversations")]
