@@ -14,83 +14,70 @@
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="nav flex-column">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            <NavLink class="nav-link d-flex align-items-center gap-1" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-stickies" aria-hidden="true"></span> Posts
             </NavLink>
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-            <NavLink class="nav-link" href="ping">
-                <span class="oi oi-link-intact" aria-hidden="true"></span> Ping
-            </NavLink>
-            <NavLink class="nav-link" href="posts">
-                <span class="oi oi-list-rich" aria-hidden="true"></span> Posts
-            </NavLink>
-            <AuthorizeView>
-                <Authorized>
-                    <NavLink class="nav-link" href="new-post">
-                        <span class="oi oi-plus" aria-hidden="true"></span> Nuevo post
-                    </NavLink>
-                </Authorized>
-            </AuthorizeView>
-        </div>
-        <NavLink class="nav-link" href="whoami">
-            <span class="oi oi-person" aria-hidden="true"></span> WhoAmI
-        </NavLink>
+        <AuthorizeView>
+            <Authorized>
+            <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center gap-1" href="new-post">
+                    <span class="bi bi-pen" aria-hidden="true"></span> 
+                    Nuevo post
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center gap-1" href="my-posts">
+                    <span class="bi bi-person-lines-fill" aria-hidden="true"></span> Mis posts
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center gap-1" href="my-claims">
+                    <span class="bi bi-send" aria-hidden="true"></span> Mis reclamaciones
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                    <NavLink class="nav-link d-flex align-items-center gap-1" href="claims-inbox">
+                     <span class="bi bi-mailbox" aria-hidden="true"></span> Reclamaciones recibidas
+                </NavLink>
+            </div>
+            </Authorized>
+        </AuthorizeView>
+
+        <AuthorizeView Roles = "Moderator, Admin">
+            <div class="nav-item px-3">
+                <NavLink class="nav-link d-flex align-items-center gap-1" href="conversation-reports">
+                    <span class="bi bi-shield-check" aria-hidden="true"></span> Moderación
+                </NavLink>
+            </div>
+        </AuthorizeView>
 
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <a class="nav-link" href="" @onclick="DoLogout">
-                        <span class="oi oi-account-logout" aria-hidden="true"></span> Logout
+                    <NavLink class="nav-link d-flex align-items-center gap-1" href="whoami">
+                        <span class="bi bi-person-circle" aria-hidden="true"></span> Mi cuenta
+                    </NavLink>
+                </div>
+                <div class="nav-item px-3">
+                    <a class="nav-link d-flex align-items-center gap-1" href="" @onclick="DoLogout">
+                        <span class="bi bi-box-arrow-left" aria-hidden="true"></span> Logout
                     </a>
                 </div>
             </Authorized>
-
             <NotAuthorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="login">
-                        <span class="oi oi-account-login" aria-hidden="true"></span> Login
+                    <NavLink class="nav-link d-flex align-items-center gap-1" href="login">
+                        <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> Login
                     </NavLink>
                 </div>
             </NotAuthorized>
         </AuthorizeView>
-        <AuthorizeView>
-            <Authorized>
-                <NavLink class="nav-link" href="my-posts">
-                    <span class="oi oi-person" aria-hidden="true"></span> Mis posts
-                </NavLink>
-                <NavLink class="nav-link" href="my-claims">
-                    Mis claims
-                </NavLink>
-                <NavLink class="nav-link" href="claims-inbox">
-                    Reclamaciones recibidas
-                </NavLink>
-
-            </Authorized>
-        </AuthorizeView>
-        <AuthorizeView Roles="Moderator,Admin">
-            <li class="nav-item px-3">
-                <NavLink class="nav-link" href="/conversation-reports">
-                    Moderación
-                </NavLink>
-            </li>
-        </AuthorizeView>
-        <li class="nav-item px-3">
-            <NavLink class="nav-link" href="/about" Match="NavLinkMatch.Prefix">
-                <span class="bi bi-info-circle-fill-nav-menu" aria-hidden="true"></span>
-                Sobre Nosotros
+        <div class="nav-item px-3">
+            <NavLink class="nav-link d-flex align-items-center gap-1" href="about">
+                <span class="bi bi-info-circle" aria-hidden="true"></span> Sobre nosotros
             </NavLink>
-        </li>
-
-
+        </div>
 
     </nav>
 </div>

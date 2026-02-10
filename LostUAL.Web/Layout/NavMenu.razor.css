@@ -16,8 +16,8 @@
     position: relative;
     width: 1.25rem;
     height: 1.25rem;
-    margin-right: 0.75rem;
-    top: -1px;
+    margin-right: 0.2rem;
+    top: -0.90rem;
     background-size: cover;
 }
 
@@ -38,7 +38,7 @@
 }
 
 .nav-item {
-    font-size: 0.9rem;
+    font-size: 1.0rem;
     padding-bottom: 0.5rem;
 }
 
