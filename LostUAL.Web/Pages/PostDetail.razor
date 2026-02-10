@@ -9,6 +9,7 @@
 @using System.Net.Http.Json
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 @attribute [Authorize]
 
 <h3>Detalle del post</h3>
@@ -23,187 +24,256 @@ else if (notFound)
 }
 else if (post is not null)
 {
-    <div class="card">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start">
-                <AuthorizeView Roles="Moderator,Admin">
-                    <Authorized>
-                        @if (PostReportId is not null)
+    <div class="container py-3">
+
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <div>
+                <h3 class="mb-1">@post.Title</h3>
+                <div class="text-muted small">
+                    @post.Category · @post.Location · @post.DateApprox
+                </div>
+            </div>
+
+            <div class="text-end">
+                <span class="badge bg-secondary me-1">@post.Type</span>
+                <span class="badge bg-info">@post.Status</span>
+                <div class="text-muted small mt-1">
+                    @post.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                </div>
+            </div>
+        </div>
+
+        @if (post.Status == PostStatus.Open)
+        {
+            <div class="alert alert-info">
+                Este post está <strong>abierto</strong>.
+            </div>
+        }
+        else if (post.Status == PostStatus.InClaim)
+        {
+            <div class="alert alert-warning">
+                Hay una <strong>reclamación en curso</strong>. El propietario o moderación pueden cerrar el post si procede.
+            </div>
+        }
+        else if (post.Status == PostStatus.Resolved)
+        {
+            <div class="alert alert-success">
+                Este post está marcado como <strong>resuelto</strong>.
+            </div>
+        }
+        else if (post.Status == PostStatus.Closed)
+        {
+            <div class="alert alert-secondary">
+                Este post está <strong>cerrado</strong>.
+            </div>
+        }
+
+        <div class="row g-4">
+
+            <div class="col-12 col-lg-8">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <p class="mb-2">@post.Description</p>
+
+                        @if (post.Type == PostType.Lost && !string.IsNullOrWhiteSpace(post.PhotoUrl))
                         {
-                            @if (PostReport is null && string.IsNullOrWhiteSpace(ModError))
+                            <div class="text-center mt-3">
+                                <img src="@post.PhotoUrl"
+                                     class="img-fluid rounded"
+                                     style="max-width: 420px; max-height: 320px; object-fit: cover;"
+                                     alt="Foto del post" />
+                            </div>
+
+                        }
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="mb-3">Detalles</h5>
+
+                        <div class="row g-2">
+                            <div class="col-12 col-md-6">
+                                <div class="text-muted small">Categoría</div>
+                                <div>@post.Category</div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <div class="text-muted small">Location</div>
+                                <div>@post.Location</div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <div class="text-muted small">Fecha aproximada</div>
+                                <div>@post.DateApprox</div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <div class="text-muted small">Creado</div>
+                                <div>@post.CreatedAtUtc.ToLocalTime()</div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="text-muted small">Creado por</div>
+                                <div class="text-truncate">@post.CreatedByUserId</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4">
+                <div class="sticky-top" style="top: 1rem;">
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="mb-3">Acciones</h5>
+
+                            <div class="d-grid gap-2">
+
+                                @if (post.Status == PostStatus.Open && post.CreatedByUserId == _myUserId)
+                                {
+                                    <button class="btn btn-warning" @onclick='() => ConfirmAndCloseAsync("Owner closed")' disabled="@_closing">
+                                        @(_closing ? "Cerrando..." : "Cerrar post")
+                                    </button>
+                                }
+
+                                @if (post.Status == PostStatus.Open && post.CreatedByUserId != _myUserId)
+                                {
+                                    <button class="btn btn-primary" @onclick="OpenClaimModal">
+                                        Reclamar
+                                    </button>
+                                }
+
+                                @*<AuthorizeView Roles="Admin,Moderator">
+                                    <Authorized>
+                                        @if (post.Status == PostStatus.Open || post.Status == PostStatus.InClaim)
+                                        {
+                                            <button class="btn btn-warning" @onclick='() => ConfirmAndCloseAsync("Moderation closed")' disabled="@_closing">
+                                              @(_closing ? "Cerrando..." : "Cerrar (moderación)")
+                                            </button>
+                                        }
+                                    </Authorized>
+                                </AuthorizeView>*@
+
+                                <AuthorizeView>
+                                    <Authorized>
+                                        <button type="button" class="btn btn-danger" @onclick="() => ShowReportModal = true">
+                                            Reportar post
+                                        </button>
+
+                                        <ReportPostModal PostId="@Id"
+                                                         IsOpen="@ShowReportModal"
+                                                         IsOpenChanged="@(v => ShowReportModal = v)" />
+                                    </Authorized>
+                                </AuthorizeView>
+
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(_closeError))
                             {
-                                <div class="alert alert-secondary">Cargando reporte...</div>
+                                <div class="alert alert-danger mt-3 mb-0">@_closeError</div>
                             }
-                            else
+                        </div>
+                    </div>
+
+                    <AuthorizeView Roles="Moderator,Admin">
+                        <Authorized>
+                            @if (PostReportId is not null)
                             {
-                                @* Panel *@
-                                <div class="card mb-3 border-warning">
+                                <div class="card border-warning">
                                     <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
-                                                <div class="fw-semibold">Reporte</div>
+                                        <div class="fw-semibold">Reporte</div>
 
-                                                @if (!string.IsNullOrWhiteSpace(ModError))
-                                                {
-                                                    <div class="alert alert-danger mt-2 mb-0">@ModError</div>
-                                                }
-                                                else if (PostReport is not null)
-                                                {
-                                                    <div class="mt-1 fw-semibold">@PostReport.Reason</div>
+                                        @if (PostReport is null && string.IsNullOrWhiteSpace(ModError))
+                                        {
+                                            <div class="alert alert-secondary mt-2 mb-0">Cargando reporte...</div>
+                                        }
+                                        else
+                                        {
+                                            @if (!string.IsNullOrWhiteSpace(ModError))
+                                            {
+                                                <div class="alert alert-danger mt-2 mb-0">@ModError</div>
+                                            }
+                                            else if (PostReport is not null)
+                                            {
+                                                <div class="mt-2 fw-semibold">@PostReport.Reason</div>
 
-                                                    <div class="text-muted">
-                                                        Estado: <strong>@PostReport.Status</strong>
-                                                        · Reporter: <strong>@PostReport.ReporterEmail</strong>
-                                                        · Post: <strong>@PostReport.PostStatus</strong>
+                                                <div class="text-muted small">
+                                                    Estado: <strong>@PostReport.Status</strong>
+                                                    · Reporter: <strong>@PostReport.ReporterEmail</strong>
+                                                    · Post: <strong>@PostReport.PostStatus</strong>
+                                                </div>
+
+                                                @if (PostReport.PostStatus.ToString() == "Closed")
+                                                {
+                                                    <div class="text-muted small">
+                                                        Cerrado: @PostReport.ClosedAtUtc?.ToLocalTime()
+                                                        @if (!string.IsNullOrWhiteSpace(PostReport.ClosedReason))
+                                                        {
+                                                            <span> · Motivo: @PostReport.ClosedReason</span>
+                                                        }
                                                     </div>
-
-                                                    @if (PostReport.PostStatus.ToString() == "Closed")
-                                                    {
-                                                        <div class="text-muted">
-                                                            Cerrado: @PostReport.ClosedAtUtc?.ToLocalTime()
-                                                            @if (!string.IsNullOrWhiteSpace(PostReport.ClosedReason))
-                                                            {
-                                                                <span> · Motivo: @PostReport.ClosedReason</span>
-                                                            }
-                                                        </div>
-                                                    }
-
-                                                    @if (PostReport.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(PostReport.BlockedEmail))
-                                                    {
-                                                        <div class="text-muted">
-                                                            Bloqueado: <strong>@PostReport.BlockedEmail</strong>
-                                                            @if (PostReport.LockoutEndUtc is not null)
-                                                            {
-                                                                <span> · Hasta: @PostReport.LockoutEndUtc.Value.ToLocalTime()</span>
-                                                            }
-                                                        </div>
-                                                    }
                                                 }
-                                            </div>
+
+                                                @if (PostReport.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(PostReport.BlockedEmail))
+                                                {
+                                                    <div class="text-muted small">
+                                                        Bloqueado: <strong>@PostReport.BlockedEmail</strong>
+                                                        @if (PostReport.LockoutEndUtc is not null)
+                                                        {
+                                                            <span> · Hasta: @PostReport.LockoutEndUtc.Value.ToLocalTime()</span>
+                                                        }
+                                                    </div>
+                                                }
+                                            }
 
                                             @if (PostReport?.Status == ReportStatus.Open)
                                             {
-                                                <div style="min-width: 360px;">
-                                                    <div class="row g-2">
-                                                        <div class="col-4">
-                                                            <input class="form-control" type="number" min="1" @bind="BlockDays" />
-                                                        </div>
-                                                        <div class="col-8">
-                                                            <input class="form-control" placeholder="Nota (opcional)" @bind="ModNote" />
-                                                        </div>
+                                                <hr class="my-3" />
+
+                                                <div class="row g-2">
+                                                    <div class="col-4">
+                                                        <input class="form-control" type="number" min="1" @bind="BlockDays" />
                                                     </div>
-
-                                                    <div class="d-flex gap-2 mt-2">
-                                                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(ModBusy)" @onclick="DismissPostReport">
-                                                            Dismiss
-                                                        </button>
-
-                                                        <button type="button" class="btn btn-warning btn-sm" disabled="@(ModBusy)" @onclick="ClosePostFromReport">
-                                                            Close post
-                                                        </button>
-
-                                                        <button type="button" class="btn btn-danger btn-sm" disabled="@(ModBusy)" @onclick="CloseBlockFromReport">
-                                                            Close + Block
-                                                        </button>
+                                                    <div class="col-8">
+                                                        <input class="form-control" placeholder="Nota (opcional)" @bind="ModNote" />
                                                     </div>
                                                 </div>
+
+                                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(ModBusy)" @onclick="DismissPostReport">
+                                                        Dismiss
+                                                    </button>
+
+                                                    <button type="button" class="btn btn-warning btn-sm" disabled="@(ModBusy)" @onclick="ClosePostFromReport">
+                                                        Close post
+                                                    </button>
+
+                                                    <button type="button" class="btn btn-danger btn-sm" disabled="@(ModBusy)" @onclick="CloseBlockFromReport">
+                                                        Close + Block
+                                                    </button>
+                                                </div>
                                             }
-                                        </div>
+                                        }
                                     </div>
                                 </div>
                             }
-                        }
-                    </Authorized>
-                </AuthorizeView>
-
-                <div>
-                    <h5 class="card-title mb-1">@post.Title</h5>
-                    <div class="text-muted small">
-                        @post.Category · @post.Location · @post.DateApprox
-                    </div>
-                    <div class="mb-3 d-flex gap-2 align-items-center">
-
-                        @* Owner: solo puede cerrar si está Open *@
-                        @if (post.Status == PostStatus.Open && post.CreatedByUserId == _myUserId)
-                        {
-                            <button class="btn btn-warning" @onclick='() => ClosePostAsync("Owner closed")' disabled="@_closing">
-                                @(_closing ? "Cerrando..." : "Cerrar post")
-                            </button>
-            
-                        } 
-                        @*Si está Open y no es el Owner entocnes puedo reclamar*@
-                        @if (post.Status == PostStatus.Open && post.CreatedByUserId != _myUserId)
-                        {
-                            <button class="btn btn-primary" @onclick="OpenClaimModal">
-                                Reclamar
-                            </button>
-
-                        }
-
-                        @* Admin/Moderator: puede cerrar en Open y en InClaim *@
-                        <AuthorizeView Roles="Admin,Moderator">
-                            <Authorized>
-                                @if (post.Status == PostStatus.Open || post.Status == PostStatus.InClaim)
-                                {
-                                    <button class="btn btn-warning" @onclick='() => ClosePostAsync("Moderation closed")' disabled="@_closing">
-                                        @(_closing ? "Cerrando..." : "Cerrar (moderación)")
-                                    </button>
-                                }
-                            </Authorized>
-                        </AuthorizeView>
-                        <AuthorizeView>
-                            <Authorized>
-                                <button type="button" class="btn btn-outline-danger" @onclick="() => ShowReportModal = true">
-                                    Reportar post
-                                </button>
-
-                                <ReportPostModal PostId="@Id"
-                                                 IsOpen="@ShowReportModal"
-                                                 IsOpenChanged="@(v => ShowReportModal = v)" />
-                            </Authorized>
-                        </AuthorizeView>
-
-
-                    </div>
-
-                    @if (!string.IsNullOrWhiteSpace(_closeError))
-                    {
-                        <div class="alert alert-danger mt-2">@_closeError</div>
-                    }
+                        </Authorized>
+                    </AuthorizeView>
 
                 </div>
-                <div class="text-end">
-                    <span class="badge bg-secondary me-1">@post.Type</span>
-                    <span class="badge bg-info">@post.Status</span>
-                </div>
-            </div>
-
-            <hr />
-
-            <p class="mb-2">@post.Description</p>
-
-            @if (post.Type == PostType.Lost && !string.IsNullOrWhiteSpace(post.PhotoUrl))
-            {
-                <img src="@post.PhotoUrl"
-                     class="img-fluid rounded mt-3"
-                     style="max-height:420px; object-fit:cover;"
-                     alt="Foto del post" />
-            }
-
-            <div class="text-muted small">
-                Creado: @post.CreatedAtUtc
             </div>
         </div>
+
+        <ClaimModal Show="_showClaim"
+                    Busy="_claiming"
+                    Error="@_claimError"
+                    OnClose="CloseClaimModal"
+                    OnSubmit="SubmitClaimAsync" />
     </div>
-
-    <ClaimModal Show="_showClaim"
-                Busy="_claiming"
-                Error="@_claimError"
-                OnClose="CloseClaimModal"
-                OnSubmit="SubmitClaimAsync" />
-
-
 }
+
 
 @code {
     [Parameter] public int Id { get; set; }
@@ -486,6 +556,18 @@ else if (post is not null)
         }
         catch (Exception ex) { ModError = ex.Message; }
         finally { ModBusy = false; }
+    }
+
+    private async Task ConfirmAndCloseAsync(string reason)
+    {
+        var ok = await JS.InvokeAsync<bool>(
+            "confirm",
+            "¿Seguro que quieres cerrar este post? Esta acción no se puede deshacer."
+        );
+
+        if (!ok) return;
+
+        await ClosePostAsync(reason);
     }
 
 

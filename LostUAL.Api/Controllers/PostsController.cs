@@ -91,8 +91,8 @@ public class PostsController : ControllerBase
         var isOwner = info.CreatedByUserId == userId;
 
       
-        if ((info.Status == PostStatus.Closed || info.Status == PostStatus.Resolved) && !(isOwner || isAdminOrModerator))
-            return NotFound();
+        /*if ((info.Status == PostStatus.Closed || info.Status == PostStatus.Resolved) && !(isOwner || isAdminOrModerator))
+            return NotFound();*/
 
         var dto = await _db.Posts
             .AsNoTracking()

@@ -79,10 +79,17 @@
         <AuthorizeView Roles="Moderator,Admin">
             <li class="nav-item px-3">
                 <NavLink class="nav-link" href="/conversation-reports">
-                    Moderación · Conversaciones
+                    Moderación
                 </NavLink>
             </li>
         </AuthorizeView>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="/about" Match="NavLinkMatch.Prefix">
+                <span class="bi bi-info-circle-fill-nav-menu" aria-hidden="true"></span>
+                Sobre Nosotros
+            </NavLink>
+        </li>
+
 
 
     </nav>
