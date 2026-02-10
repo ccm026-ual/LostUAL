@@ -5,10 +5,13 @@
 @using LostUAL.Contracts.Chat
 @using LostUAL.Contracts.Claims
 @using Microsoft.AspNetCore.WebUtilities
+@using System.Security.Claims
+@using System.IdentityModel.Tokens.Jwt;
 @inject NavigationManager Nav
 @inject HttpClient Http
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
 
-<h3>Conversación</h3>
 
 @if (_loading)
 {
@@ -20,206 +23,249 @@ else if (!string.IsNullOrWhiteSpace(_error))
 }
 else
 {
-    @if (IsModerationView)
-    {
-        <div class="card mb-3 border-warning">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <div class="fw-semibold">Reporte</div>
+    <div class="container py-3">
 
-                        @if (!string.IsNullOrWhiteSpace(ModError))
-                        {
-                            <div class="text-danger">@ModError</div>
-                        }
-                        else if (Report is not null)
-                        {
-                            <div class="mt-1">@Report.Reason</div>
-                            <div class="text-muted">
-                                Estado: <strong>@Report.Status</strong>
-                                · Reporter: <strong>@Report.ReporterEmail</strong>
-                            </div>
-
-                            @if (Report.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(Report.BlockedEmail))
-                            {
-                                <div class="text-muted">
-                                    Bloqueado: <strong>@Report.BlockedEmail</strong>
-                                    @if (Report.LockoutEndUtc is not null)
-                                    {
-                                        <span> · Hasta: @Report.LockoutEndUtc.Value.ToLocalTime()</span>
-                                    }
-                                </div>
-                            }
-                        }
-                    </div>
-
-                    @if (Report?.Status == ReportStatus.Open)
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <div>
+                <h3 class="mb-1">Conversación</h3>
+                <div class="text-muted small">
+                    ID: @ConversationId
+                    @if (IsModerationView && Report is not null)
                     {
-                        <div style="min-width: 320px;">
-                            <div class="row g-2">
-                                <div class="col-4">
-                                    <input class="form-control" type="number" min="1" @bind="BlockDays" />
-                                </div>
-                                <div class="col-8">
-                                    <input class="form-control" placeholder="Nota (opcional)" @bind="ModNote" />
-                                </div>
-                            </div>
-                            @if (!string.IsNullOrWhiteSpace(ModError))
-                            {
-                                <div class="alert alert-danger mt-2 mb-0">@ModError</div>
-                            }
-                            <div class="d-flex gap-2 mt-2">
-                                <button type="button"
-                                        class="btn btn-outline-secondary btn-sm"
-                                        disabled="@(ModBusy)"
-                                        @onclick="DismissReport">
-                                    Dismiss
-                                </button>
-
-                                <button type="button"
-                                        class="btn btn-danger btn-sm"
-                                        disabled="@(ModBusy)"
-                                        @onclick="BlockUserFromReport">
-                                    Block user
-                                </button>
-
-                            </div>
-                        </div>
+                        <span> · Vista moderación · Reporter: <strong>@Report.ReporterEmail</strong></span>
                     }
                 </div>
             </div>
-        </div>
-    }
 
-    <div class="mb-3 d-flex gap-2 align-items-center">
-        <span class="badge bg-secondary">Claim: @_claimStatus</span>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="badge bg-secondary">Claim: @_claimStatus</span>
 
-        @if (_claimStatus == ClaimStatus.Accepted)
-        {
-            <span class="badge bg-info text-dark">
-                Owner: @(_ownerConfirmedAtUtc is null ? "pendiente" : "confirmado")
-            </span>
-            <span class="badge bg-info text-dark">
-                Claimant: @(_claimantConfirmedAtUtc is null ? "pendiente" : "confirmado")
-            </span>
-
-            @if (_autoResolveAtUtc is not null)
-            {
-                <span class="small text-muted ms-1">
-                    Auto-resolve: @_autoResolveAtUtc.Value.ToLocalTime()
+                <span class="badge @(_status == ConversationStatus.ReadOnly ? "bg-warning text-dark" : "bg-success")">
+                    @(_status == ConversationStatus.ReadOnly ? "Solo lectura" : "Activa")
                 </span>
-            }
-        }
-
-        @if (_canAccept)
-        {
-            <button class="btn btn-success btn-sm" @onclick="AcceptAsync" disabled="@_acting">
-                @(_acting ? "Procesando..." : "Aceptar")
-            </button>
-        }
-
-        @if (_canReject)
-        {
-            <button class="btn btn-danger btn-sm" @onclick="RejectAsync" disabled="@_acting">
-                @(_acting ? "Procesando..." : "Rechazar")
-            </button>
-        }
-
-        @if (_canConfirm)
-        {
-            <button class="btn btn-primary btn-sm" @onclick="ConfirmAsync" disabled="@_acting">
-                @(_acting ? "Procesando..." : "Confirmar resolución")
-            </button>
-        }
-
-        @if (_canWithdraw)
-        {
-            <button class="btn btn-outline-danger btn-sm" @onclick="WithdrawAsync" disabled="@_acting">
-                @(_acting ? "Procesando..." : "Retirar claim")
-            </button>
-        }
-        <AuthorizeView>
-            <Authorized>
-                <button class="btn btn-outline-danger btn-sm" @onclick="() => ShowReport = true">
-                    Reportar conversación
-                </button>
-            </Authorized>
-        </AuthorizeView>
-
-
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(_actionError))
-    {
-        <div class="alert alert-danger">@_actionError</div>
-    }
-
-
-    @if (_status == ConversationStatus.ReadOnly)
-    {
-        <div class="alert alert-warning">
-            Esta conversación está en modo solo lectura.
+            </div>
         </div>
-    }
 
-    <div class="card p-3 mb-3" style="max-height: 420px; overflow:auto;">
-        @if (_messages.Count == 0)
+        @if (!string.IsNullOrWhiteSpace(_error))
         {
-            <div class="text-muted">No hay mensajes todavía.</div>
+            <div class="alert alert-danger">@_error</div>
         }
-        else
-        {
-            @foreach (var m in _messages)
-            {
-                @*<div class="mb-3">
-                    <div class="small text-muted">
-                        @m.CreatedAtUtc.ToLocalTime()
+
+        <div class="row g-4">
+
+            <div class="col-12 col-lg-8">
+
+                @if (_status == ConversationStatus.ReadOnly)
+                {
+                    <div class="alert alert-warning">
+                        Esta conversación está en modo solo lectura.
                     </div>
-                    <div>
-                        <b>@ShortUser(m.SenderUserId)</b>: @m.Body
-                    </div>
-                </div>*@
-                @*@<div class="small text-muted">
-                    @(string.IsNullOrWhiteSpace(m.SenderEmail) ? m.SenderUserId : m.SenderEmail)
-                    · @m.CreatedAtUtc.ToLocalTime()
-                </div>
-                <div>@m.Body</div>*@
-                <div class="mb-3">
-                    <div class="small text-muted">
-                        @m.CreatedAtUtc.ToLocalTime()
-                    </div>
-                    <div>
-                        <b>@m.SenderEmail</b>: @m.Body
+                }
+
+                <div class="chat-card mb-3">
+                    <div class="chat-messages" @ref="_chatMessagesRef">
+                        @if (_messages.Count == 0)
+                        {
+                            <div class="text-muted">No hay mensajes todavía.</div>
+                        }
+                        else
+                        {
+                            @foreach (var m in _messages)
+                            {
+                                var mine = IsMine(m);
+
+                                <div class="msg-row @(mine ? "mine" : "theirs")">
+                                    <div class="msg-bubble">
+                                        <div class="msg-meta @(mine ? "text-end" : "")">
+                                            <span class="msg-sender">@((mine) ? "Tú" : (m.SenderEmail ?? "Usuario"))</span>
+                                            <span class="msg-time">@m.CreatedAtUtc.ToLocalTime().ToString("dd/MM HH:mm")</span>
+                                        </div>
+
+                                        <div class="msg-text">@m.Body</div>
+                                    </div>
+                                </div>
+                            }
+                        }
                     </div>
                 </div>
 
-            }
-        }
+                <div class="card">
+                    <div class="card-body">
+                        <EditForm Model="_send" OnValidSubmit="SendAsync">
+                            <div class="input-group">
+                                <InputText class="form-control" @bind-Value="_send.Body" placeholder="Escribe un mensaje..." />
+                                <button class="btn btn-primary" type="submit" disabled="@(_sending || _status == ConversationStatus.ReadOnly)">
+                                    @(_sending ? "Enviando..." : "Enviar")
+                                </button>
+                            </div>
+                        </EditForm>
+
+                        @if (!string.IsNullOrWhiteSpace(_sendError))
+                        {
+                            <div class="alert alert-danger mt-2 mb-0">@_sendError</div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4">
+                <div class="sticky-top" style="top: 1rem;">
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="mb-3">Acciones</h5>
+
+                            @if (_claimStatus == ClaimStatus.Accepted)
+                            {
+                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                    <span class="badge bg-info text-dark">
+                                        Owner: @(_ownerConfirmedAtUtc is null ? "pendiente" : "confirmado")
+                                    </span>
+                                    <span class="badge bg-info text-dark">
+                                        Claimant: @(_claimantConfirmedAtUtc is null ? "pendiente" : "confirmado")
+                                    </span>
+                                </div>
+
+                                @if (_autoResolveAtUtc is not null)
+                                {
+                                    <div class="small text-muted mb-2">
+                                        Auto-resolve: @_autoResolveAtUtc.Value.ToLocalTime()
+                                    </div>
+                                }
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(_actionError))
+                            {
+                                <div class="alert alert-danger">@_actionError</div>
+                            }
+
+                            <div class="d-grid gap-2">
+                                @if (_canAccept)
+                                {
+                                    <button class="btn btn-success btn-sm" @onclick="AcceptAsync" disabled="@_acting">
+                                        @(_acting ? "Procesando..." : "Aceptar")
+                                    </button>
+                                }
+
+                                @if (_canReject)
+                                {
+                                    <button class="btn btn-danger btn-sm" @onclick="RejectAsync" disabled="@_acting">
+                                        @(_acting ? "Procesando..." : "Rechazar")
+                                    </button>
+                                }
+
+                                @if (_canConfirm)
+                                {
+                                    <button class="btn btn-primary btn-sm" @onclick="ConfirmAsync" disabled="@_acting">
+                                        @(_acting ? "Procesando..." : "Confirmar resolución")
+                                    </button>
+                                }
+
+                                @if (_canWithdraw)
+                                {
+                                    <button class="btn btn-outline-danger btn-sm" @onclick="WithdrawAsync" disabled="@_acting">
+                                        @(_acting ? "Procesando..." : "Retirar claim")
+                                    </button>
+                                }
+                            </div>
+
+                            <hr class="my-3" />
+
+                            <AuthorizeView>
+                                <Authorized>
+                                    <button class="btn btn-danger w-100 btn-sm" @onclick="() => ShowReport = true">
+                                        Reportar conversación
+                                    </button>
+                                </Authorized>
+                            </AuthorizeView>
+
+                            <div class="text-muted small mt-2">
+                                Mantén el respeto y no compartas información privada en los mensajes.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Moderación (solo cuando se accede con reportId) -->
+                    @if (IsModerationView)
+                    {
+                        <div class="card border-warning">
+                            <div class="card-body">
+                                <h5 class="mb-2">Moderación</h5>
+
+                                @if (!string.IsNullOrWhiteSpace(ModError))
+                                {
+                                    <div class="alert alert-danger">@ModError</div>
+                                }
+
+                                @if (Report is not null)
+                                {
+                                    <div class="fw-semibold">Reporte</div>
+                                    <div class="mt-1">@Report.Reason</div>
+                                    <div class="text-muted small">
+                                        Estado: <strong>@Report.Status</strong> · Reporter: <strong>@Report.ReporterEmail</strong>
+                                    </div>
+
+                                    @if (Report.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(Report.BlockedEmail))
+                                    {
+                                        <div class="text-muted small mt-1">
+                                            Bloqueado: <strong>@Report.BlockedEmail</strong>
+                                            @if (Report.LockoutEndUtc is not null)
+                                            {
+                                                <span> · Hasta: @Report.LockoutEndUtc.Value.ToLocalTime()</span>
+                                            }
+                                        </div>
+                                    }
+                                }
+
+                                @if (Report?.Status == ReportStatus.Open)
+                                {
+                                    <hr class="my-3" />
+
+                                    <div class="row g-2">
+                                        <div class="col-4">
+                                            <label class="form-label small mb-1">Días</label>
+                                            <input class="form-control" type="number" min="1" @bind="BlockDays" />
+                                        </div>
+                                        <div class="col-8">
+                                            <label class="form-label small mb-1">Nota</label>
+                                            <input class="form-control" placeholder="Nota (opcional)" @bind="ModNote" />
+                                        </div>
+                                    </div>
+
+                                    <div class="d-grid gap-2 mt-2">
+                                        <button type="button"
+                                                class="btn btn-outline-secondary btn-sm"
+                                                disabled="@(ModBusy)"
+                                                @onclick="DismissReport">
+                                            Dismiss
+                                        </button>
+
+                                        <button type="button"
+                                                class="btn btn-danger btn-sm"
+                                                disabled="@(ModBusy)"
+                                                @onclick="BlockUserFromReport">
+                                            Block user
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+            </div>
+        </div>
     </div>
 
-    <EditForm Model="_send" OnValidSubmit="SendAsync">
-        <div class="input-group">
-            <InputText class="form-control" @bind-Value="_send.Body" placeholder="Escribe un mensaje..." />
-            <button class="btn btn-primary" type="submit" disabled="@(_sending || _status == ConversationStatus.ReadOnly)">
-                @(_sending ? "Enviando..." : "Enviar")
-            </button>
-        </div>
-    </EditForm>
-
-    @if (!string.IsNullOrWhiteSpace(_sendError))
-    {
-        <div class="alert alert-danger mt-2">@_sendError</div>
+        <ReportConversationModal ConversationId="@ConversationId"
+                                 Visible="@ShowReport"
+                                 VisibleChanged="@((bool v) => ShowReport = v)" />
+    </div>
     }
-
-    <ReportConversationModal ConversationId="@ConversationId"
-                          Visible="@ShowReport"
-                          VisibleChanged="@((bool v) => ShowReport = v)" />
-
-}
 
 @code {
     private bool ShowReport;
     [Parameter] public int ConversationId { get; set; }
+
+    private string? _myEmail;
 
     private bool _loading = true;
     private bool _sending;
@@ -243,6 +289,9 @@ else
     private List<MessageDto> _messages = new();
     private SendDto _send = new();
 
+    private ElementReference _chatMessagesRef;
+    private bool _scrollToBottomPending;
+
     //MODERACIÓN
 
     private int? ReportId;
@@ -260,16 +309,31 @@ else
         var uri = Nav.ToAbsoluteUri(Nav.Uri);
         var q = QueryHelpers.ParseQuery(uri.Query);
 
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        _myEmail = user.FindFirst(ClaimTypes.Email)?.Value;
+
         ReportId = null;
         if (q.TryGetValue("reportId", out var rid) && int.TryParse(rid.ToString(), out var parsed))
             ReportId = parsed;
 
-        if (ReportId is not null)
+        if (ReportId is not null) 
+        { 
             await LoadReportSummaryAsync(ReportId.Value);
+            _myEmail = Report?.ReporterEmail; 
+        }
+
         else
             Report = null;
 
-        await LoadAsync();
+            await LoadAsync();
+
+        }
+
+    private bool IsMine(MessageDto m)
+    {
+        if (string.IsNullOrWhiteSpace(_myEmail)) return false;
+        return string.Equals(m.SenderEmail, _myEmail, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task LoadAsync()
@@ -309,6 +373,7 @@ else
         }
         finally
         {
+            _scrollToBottomPending = true;
             _loading = false;
         }
     }
@@ -545,6 +610,15 @@ else
         finally
         {
             ModBusy = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_scrollToBottomPending)
+        {
+            _scrollToBottomPending = false;
+            await JS.InvokeVoidAsync("lostualScrollToBottom", _chatMessagesRef);
         }
     }
 
