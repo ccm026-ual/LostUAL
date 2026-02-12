@@ -6,9 +6,7 @@
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                 <NotAuthorized>
                     <RedirectToLogin />
-                    @* Alternativa si no quieres redirigir:
-                    <p>No autorizado. <a href="login">Inicia sesión</a></p>
-                    *@
+        
                 </NotAuthorized>
             </AuthorizeRouteView>
 
