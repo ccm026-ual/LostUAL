@@ -11,7 +11,14 @@
 
 <AuthorizeView>
     <Authorized>
-        <h3> Posts publicados</h3>
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <div>
+                <h3 class="mb-1">Posts publicados</h3>
+                <div class="text-muted small">
+                    Consulta las publicaciones de otros usuarios
+                </div>
+            </div>
+        </div>
         @if (items is null)
         {
             <p>Cargando...</p>
