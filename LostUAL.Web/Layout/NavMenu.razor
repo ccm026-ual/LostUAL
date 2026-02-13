@@ -2,14 +2,12 @@
 @inject LostUAL.Web.Auth.AuthService Auth
 @inject NavigationManager Nav
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">LostUAL.Web</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
+<div class="top-row brand-row">
+    <a class="brand-link" href="">
+        <img src="images/logo-ual.png" class="brand-img" alt="LostUAL" />
+    </a>
 </div>
+
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
     <nav class="nav flex-column">

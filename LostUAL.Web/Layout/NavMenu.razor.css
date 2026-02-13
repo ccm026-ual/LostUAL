@@ -7,9 +7,34 @@
     background-color: rgba(0,0,0,0.4);
 }
 
+.top-row {
+    background: url("images/banner.png");
+    min-height: 3.5rem;
+}
+
+.brand-row {
+    padding-top: 8px;
+    padding-left: 8px;
+    overflow: hidden;
+}
+
+.brand-link {
+    display: block;
+    width: 100%;
+}
+
+.brand-img {
+    display: block;
+    width: 90%;
+    height: auto; 
+    max-width: 90%;
+}
+
+
 .navbar-brand {
     font-size: 1.1rem;
 }
+
 
 .bi {
     display: inline-block;
