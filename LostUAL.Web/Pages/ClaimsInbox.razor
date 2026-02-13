@@ -3,115 +3,252 @@
 
 @using System.Net.Http.Json
 @using LostUAL.Contracts.Claims
+@using LostUAL.Contracts.Posts
 @inject HttpClient Http
 @inject NavigationManager Nav
 
-<h3>Reclamaciones recibidas</h3>
-
-@if (PostId is int)
-{
-    if (_items.Count > 0)
-    {
-        <div class="alert alert-secondary d-flex justify-content-between align-items-center">
-            <div>
-                Reclamaciones para:
-                <b>@FilterPostTitle</b>
-            </div>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @onclick="@(() => Nav.NavigateTo("/claims-inbox"))">
-                Ver todas
-            </button>
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+    <div>
+        <h3 class="mb-1">Reclamaciones recibidas</h3>
+        <div class="text-muted small">
+            Gestiona las reclamaciones que otros usuarios han hecho sobre tus posts
         </div>
+    </div>
+</div>
+
+<div class="container py-3">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+
+        <div class="d-flex flex-wrap gap-2">
+            @if (IsFiltered)
+            {
+                <button class="btn btn-outline-secondary" @onclick="@(() => Nav.NavigateTo("/claims-inbox"))">
+                    Ver todas
+                </button>
+            }
+
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <p>Cargando...</p>
     }
-}
-
-@if (_loading)
-{
-    <p>Cargando...</p>
-}
-else if (!string.IsNullOrWhiteSpace(_error))
-{
-    <div class="alert alert-danger">@_error</div>
-}
-else if (_items.Count == 0)
-{
-    if (IsFiltered)
+    else if (!string.IsNullOrWhiteSpace(_error))
     {
-        <div class="alert alert-info d-flex justify-content-between align-items-center">
-            <div>No hay reclamaciones para este post.</div>
-            <button class="btn btn-sm btn-outline-secondary"
-                    @onclick="@(() => Nav.NavigateTo("/my-posts"))">
-                Volver a Mis posts
-            </button>
-        </div>
+        <div class="alert alert-danger">@_error</div>
+    }
+    else if (_items.Count == 0)
+    {
+        @if (IsFiltered)
+        {
+            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                <div>No hay reclamaciones para este post.</div>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => Nav.NavigateTo("/my-posts"))">
+                    Volver a Mis posts
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">No tienes reclamaciones recibidas.</div>
+        }
     }
     else
     {
-        <div class="alert alert-info">No tienes reclamaciones recibidas.</div>
+        <div class="row g-4">
+            <div class="col-12 col-lg-8">
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="row g-2 align-items-end">
+
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Estado</label>
+                                <select class="form-select" @bind="_statusFilter">
+                                    <option value="All">Todos</option>
+                                    @foreach (var s in Enum.GetValues<ClaimStatus>())
+                                    {
+                                        <option value="@s">@s</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Tipo</label>
+                                <select class="form-select" @bind="_typeFilter">
+                                    <option value="All">Todos</option>
+                                    @foreach (var t in Enum.GetValues<PostType>())
+                                    {
+                                        <option value="@t">@t</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <label class="form-label">Buscar</label>
+                                <input class="form-control" @bind="_q"
+                                       placeholder="Título del post o claimant..." />
+                            </div>
+
+                            <div class="col-12 d-flex flex-wrap gap-2 mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="onlyUnread"
+                                           @bind="_onlyUnread" />
+                                    <label class="form-check-label" for="onlyUnread">
+                                        Solo con mensajes nuevos
+                                    </label>
+                                </div>
+
+                                <div class="ms-auto d-flex gap-2 align-items-center">
+                                    <label class="text-muted small mb-0">Orden</label>
+                                    <select class="form-select form-select-sm" style="max-width: 220px;" @bind="_sort">
+                                        <option value="Newest">Más recientes</option>
+                                        <option value="Oldest">Más antiguos</option>
+                                        <option value="UnreadFirst">Primero los nuevos</option>
+                                        <option value="PendingFirst">Primero pendientes</option>
+                                    </select>
+
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="ClearFilters">
+                                        Limpiar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-12 text-muted small mt-2">
+                                Mostrando <strong>@Filtered.Count</strong> de <strong>@_items.Count</strong>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                @if (Filtered.Count == 0)
+                {
+                    <div class="alert alert-info">No hay reclamaciones para los filtros seleccionados.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Post</th>
+                                    <th>Claimant</th>
+                                    <th>Estado</th>
+                                    <th>Creada</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in Filtered)
+                                {
+                                    <tr class="@(c.HasUnread ? "table-warning" : "")">
+                                        <td>
+                                            <a class="fw-semibold text-decoration-none"
+                                               href="@($"/posts/{c.PostId}")">
+                                                @c.PostTitle
+                                            </a>
+                                            <div class="small text-muted">@c.PostType</div>
+                                        </td>
+
+                                        <td>
+                                            @(string.IsNullOrWhiteSpace(c.ClaimantEmail) ? c.ClaimantUserId : c.ClaimantEmail)
+                                            @if (c.HasUnread)
+                                            {
+                                                <span class="badge bg-warning text-dark ms-2">Nuevo</span>
+                                            }
+                                        </td>
+
+                                        <td>
+                                            <span class="badge @ClaimBadge(c.Status)">@c.Status</span>
+                                        </td>
+
+                                        <td class="text-muted">
+                                            @c.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        </td>
+
+                                        <td class="text-end">
+                                            @if (c.ConversationId is int convId)
+                                            {
+                                                <button class="btn btn-sm @(c.HasUnread ? "btn-primary" : "btn-outline-primary")"
+                                                        @onclick="@(() => Nav.NavigateTo($"/conversations/{convId}"))">
+                                                    Abrir chat
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-sm btn-outline-secondary" disabled>
+                                                    Sin chat
+                                                </button>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="col-12 col-lg-4">
+                <div class="sticky-top" style="top: 1rem;">
+
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="mb-3">Resumen</h5>
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Total</span>
+                                <strong>@_items.Count</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Con mensajes nuevos</span>
+                                <strong>@_items.Count(x => x.HasUnread)</strong>
+                            </div>
+
+                            <hr />
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Pendientes</span>
+                                <strong>@_items.Count(x => x.Status == ClaimStatus.Pending)</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Aceptadas</span>
+                                <strong>@_items.Count(x => x.Status == ClaimStatus.Accepted)</strong>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Rechazadas</span>
+                                <strong>@_items.Count(x => x.Status == ClaimStatus.Rejected)</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     }
-}
-
-else
-{
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Post</th>
-                <th>Claimant</th>
-                <th>Estado</th>
-                <th>Creada</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var c in _items)
-            {
-                <tr>
-                    <td>
-                        <a href="" @onclick="@(() => Nav.NavigateTo($"/posts/{c.PostId}"))" @onclick:preventDefault="true">
-                            @c.PostTitle
-                        </a>
-                        <div class="small text-muted">@c.PostType</div>
-                    </td>
-                    <td>
-                        @(!string.IsNullOrWhiteSpace(c.ClaimantEmail) ? c.ClaimantEmail : c.ClaimantUserId)
-                        @if (c.HasUnread)
-                        {
-                            <span class="badge bg-warning text-dark ms-2">Nuevo</span>
-                        }
-                    </td>
-
-                    <td>@c.Status</td>
-                    <td>@c.CreatedAtUtc.ToLocalTime()</td>
-                    <td class="text-end">
-                        @if (c.ConversationId is int convId)
-                        {
-                            <button class="btn btn-sm btn-primary"
-                                    @onclick="@(() => Nav.NavigateTo($"/conversations/{convId}"))">
-                                Abrir chat
-                            </button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-sm btn-secondary" disabled>Sin chat</button>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+</div>
 
 @code {
     private bool _loading = true;
     private string? _error;
     private List<InboxClaimListItemDto> _items = new();
+
     [SupplyParameterFromQuery]
     public int? PostId { get; set; }
+
     private bool IsFiltered => PostId is int;
 
+    private string _statusFilter = "All";
+    private string _typeFilter = "All";
+    private string _q = "";
+    private bool _onlyUnread = false;
+    private string _sort = "Newest";
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
         await LoadAsync();
     }
@@ -125,7 +262,6 @@ else
         {
             var url = PostId is int pid ? $"/api/claims/inbox?postId={pid}" : "/api/claims/inbox";
             _items = await Http.GetFromJsonAsync<List<InboxClaimListItemDto>>(url) ?? new();
-
         }
         catch (Exception ex)
         {
@@ -138,6 +274,54 @@ else
     }
 
     private string? FilterPostTitle =>
-    PostId is not null && _items.Count > 0 ? _items[0].PostTitle : null;
+        PostId is not null && _items.Count > 0 ? _items[0].PostTitle : null;
 
+    private List<InboxClaimListItemDto> Filtered =>
+        ApplyFiltersAndSort(_items).ToList();
+
+    private IEnumerable<InboxClaimListItemDto> ApplyFiltersAndSort(IEnumerable<InboxClaimListItemDto> src)
+    {
+        var q = (_q ?? "").Trim();
+
+        var filtered = src.Where(x =>
+            (_statusFilter == "All" || x.Status.ToString() == _statusFilter) &&
+            (_typeFilter == "All" || x.PostType.ToString() == _typeFilter) &&
+            (!_onlyUnread || x.HasUnread) &&
+            (q.Length == 0 ||
+                (x.PostTitle?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (x.ClaimantEmail?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (x.ClaimantUserId?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false))
+        );
+
+        return _sort switch
+        {
+            "Oldest" => filtered.OrderBy(x => x.CreatedAtUtc),
+            "UnreadFirst" => filtered
+                .OrderByDescending(x => x.HasUnread)
+                .ThenByDescending(x => x.CreatedAtUtc),
+            "PendingFirst" => filtered
+                .OrderByDescending(x => x.Status == ClaimStatus.Pending)
+                .ThenByDescending(x => x.HasUnread)
+                .ThenByDescending(x => x.CreatedAtUtc),
+            _ => filtered.OrderByDescending(x => x.CreatedAtUtc),
+        };
+    }
+
+    private void ClearFilters()
+    {
+        _statusFilter = "All";
+        _typeFilter = "All";
+        _q = "";
+        _onlyUnread = false;
+        _sort = "Newest";
+    }
+
+    private static string ClaimBadge(ClaimStatus s) => s switch
+    {
+        ClaimStatus.Accepted => "bg-success",
+        ClaimStatus.Pending => "bg-warning text-dark",
+        ClaimStatus.Rejected => "bg-danger",
+        ClaimStatus.Withdrawn => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
 }
