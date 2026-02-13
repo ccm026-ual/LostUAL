@@ -13,7 +13,7 @@ main {
 }*/
 
 .sidebar {
-    background: #326195 !important;
+    background: var(--nav-bg) !important;
 }
 
 .top-row {

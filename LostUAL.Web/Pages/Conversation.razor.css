@@ -1,7 +1,7 @@
 ﻿.chat-card {
     border: 1px solid rgba(0,0,0,.08);
     border-radius: 12px;
-    background: rgba(255,255,255,.9);
+    background: var(--chat-surface);
     padding: 12px;
 }
 
@@ -32,16 +32,18 @@
     border-radius: 14px;
     border: 1px solid rgba(0,0,0,.08);
     box-shadow: 0 1px 2px rgba(0,0,0,.06);
-    background: #fff;
+    background: var(--msg-theirs-bg);
+    color: var(--msg-theirs-text);
 }
 
 .msg-row.mine .msg-bubble {
-    background: rgba(13, 110, 253, 0.12);
-    border-color: rgba(13, 110, 253, 0.25);
+    background: var(--msg-mine-bg);
+    color: var(--msg-mine-text);
 }
 
 .msg-row.theirs .msg-bubble {
-    background: #fff;
+    background-color: var(--msg-theirs-bg) !important;
+    color: var(--msg-theirs-text) !important;
 }
 
 .msg-meta {
@@ -52,6 +54,7 @@
     font-size: 0.78rem;
     color: rgba(0,0,0,.55);
     margin-bottom: 4px;
+    color: var(--msg-meta) !important;
 }
 
 .msg-row.mine .msg-meta {
@@ -60,7 +63,7 @@
 
 .msg-sender {
     font-weight: 600;
-    color: rgba(0,0,0,.65);
+    color: var(--msg-sender) !important;
 }
 
 .msg-time {
@@ -68,6 +71,7 @@
 }
 
 .msg-text {
-    white-space: pre-wrap; 
+    white-space: pre-wrap;
     word-break: break-word;
+    color: inherit !important;
 }

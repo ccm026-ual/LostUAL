@@ -112,3 +112,112 @@ code {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+:root {
+    --app-bg: #ffffff;
+    --app-text: #111111;
+    --nav-text: #ffffff;
+    --nav-hover: rgba(255,255,255,.10);
+    --nav-active: rgba(255,255,255,.18);
+}
+
+
+    :root[data-bs-theme="light"] {
+        --app-bg: #ffffff;
+        --app-text: #111111;
+        --nav-bg: #326195;
+        --nav-text: #ffffff;
+        --nav-hover: rgba(255,255,255,.10);
+        --nav-active: rgba(255,255,255,.18);
+        --row-highlight: #E7F1FF;
+        --table-warning-bg: #E7F1FF;
+        --unread-bg: #bff7ff;
+        --unread-hover: #8feeff;
+        --unread-accent: #00bcd4;
+        --chat-surface: #f1f3f5;
+        --msg-mine-bg: #cfe3ff;
+        --msg-mine-text: #0b1b2b;
+        --msg-theirs-bg: #ffffff;
+        --msg-theirs-text: #0b1b2b;
+        --msg-meta: rgba(0,0,0,.55);
+    }
+
+
+    :root[data-bs-theme="dark"] {
+        --app-bg: #0f1115;
+        --app-text: #e9edf3;
+        --nav-bg: #17314f;
+        --nav-text: #ffffff;
+        --nav-hover: rgba(255,255,255,.10);
+        --nav-active: rgba(255,255,255,.18);
+        --row-highlight: #0F2A45;
+        --table-warning-bg: #0F2A45;
+        --unread-bg: #0b2f35;
+        --unread-hover: #11414a;
+        --unread-accent: #19d3ee;
+        --chat-surface: #151a1f;
+        --msg-mine-bg: #244a7a;
+        --msg-mine-text: #e9edf3;
+        --msg-theirs-bg: #262e37;
+        --msg-theirs-text: #e9edf3;
+        --msg-meta: rgba(233,237,243,.75);
+        --msg-sender: #e9edf3;
+        --msg-time: rgba(233,237,243,.70);
+        --msg-body: #e9edf3;
+    }
+
+
+body {
+    background: var(--app-bg);
+    color: var(--app-text);
+}
+
+body {
+    background: var(--app-bg);
+    color: var(--app-text);
+}
+
+.sidebar {
+    background: var(--nav-bg) !important;
+}
+
+.nav-item  a,
+.nav-item .bi {
+    color: var(--nav-text);
+}
+
+    .nav-item a:hover {
+        background: var(--nav-hover);
+    }
+
+    .nav-item a.active {
+        background: var(--nav-active);
+    }
+html[data-bs-theme] body {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+html[data-bs-theme] .page,
+html[data-bs-theme] main,
+html[data-bs-theme] .content {
+    background-color: var(--bs-body-bg) !important;
+    color: var(--bs-body-color) !important;
+}
+
+    html[data-bs-theme] .page > main > .top-row {
+        background-color: var(--bs-body-bg) !important;
+        color: var(--bs-body-color) !important;
+        border-bottom: 1px solid var(--bs-border-color) !important;
+    }
+
+tr.row-highlight {
+    background: var(--row-highlight) !important;
+}
+
+.table-warning {
+    --bs-table-bg: var(--unread-bg) !important;
+    --bs-table-hover-bg: var(--unread-hover) !important;
+    --bs-table-color: var(--bs-body-color) !important;
+}
+

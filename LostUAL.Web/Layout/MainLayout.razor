@@ -1,4 +1,6 @@
 ﻿@inherits LayoutComponentBase
+@inject IJSRuntime JS
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
@@ -6,7 +8,9 @@
 
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            <button class="btn btn-link ms-auto" @onclick="ToggleTheme" title="Cambiar tema">
+                <span class="bi @(isDark ? "bi-sun" : "bi-moon")"></span>
+            </button>
         </div>
 
         <article class="content px-4">
@@ -14,3 +18,23 @@
         </article>
     </main>
 </div>
+
+@code {
+    private bool isDark;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        var saved = await JS.InvokeAsync<string>("theme.get");
+        isDark = saved == "dark";
+        await JS.InvokeVoidAsync("theme.set", saved);
+        StateHasChanged();
+    }
+
+    private async Task ToggleTheme()
+    {
+        isDark = !isDark;
+        await JS.InvokeVoidAsync("theme.set", isDark ? "dark" : "light");
+    }
+}
