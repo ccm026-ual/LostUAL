@@ -60,6 +60,8 @@ main {
         height: 100vh;
         position: sticky;
         top: 0;
+        flex: 0 0 275px; 
+        flex-shrink: 0;
     }
 
     .top-row {

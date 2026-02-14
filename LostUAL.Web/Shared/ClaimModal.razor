@@ -12,7 +12,7 @@
         </div>
 
         <div class="text-muted small mb-2">
-            Escribe un primer mensaje para el owner.
+            Escribe un primer mensaje.
         </div>
 
         <textarea class="form-control" rows="4" @bind="_text" placeholder="Hola, creo que es mío porque..."></textarea>
@@ -57,16 +57,36 @@
 }
 
 <style>
-    .claim-backdrop{
-      position:fixed; inset:0; background:rgba(0,0,0,.55);
-      z-index:1040;
+    .claim-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 1040;
     }
-    .claim-modal{
-      position:fixed; left:50%; top:18%;
-      transform:translateX(-50%);
-      width:min(560px, calc(100% - 2rem));
-      background:#fff; border-radius:.75rem;
-      padding:1rem; box-shadow:0 10px 30px rgba(0,0,0,.35);
-      z-index:1050;
+
+    .claim-modal {
+        position: fixed;
+        left: 50%;
+        top: 18%;
+        transform: translateX(-50%);
+        width: min(560px, calc(100% - 2rem));
+        background: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        border: 1px solid var(--bs-border-color);
+        border-radius: .75rem;
+        padding: 1rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,.35);
+        z-index: 1050;
     }
+
+        .claim-modal .form-control {
+            background: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            border-color: var(--bs-border-color);
+        }
+
+        .claim-modal .text-muted {
+            color: var(--bs-secondary-color) !important;
+        }
 </style>
+

@@ -117,8 +117,6 @@ public class ConversationModerationController : ControllerBase
         if (days < 1) days = 1;
 
         var user = await _userManager.FindByIdAsync(targetUserId);
-        if (user is null)
-            return BadRequest("Usuario objetivo no encontrado.");
 
         if (!user.LockoutEnabled)
         {
