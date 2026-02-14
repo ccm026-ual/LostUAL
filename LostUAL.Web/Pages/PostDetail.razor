@@ -201,9 +201,9 @@ else if (post is not null)
                                                 <div class="mt-2 fw-semibold">@PostReport.Reason</div>
 
                                                 <div class="text-muted small">
-                                                    Estado: <strong>@PostReport.Status</strong>
-                                                    · Reporter: <strong>@PostReport.ReporterEmail</strong>
-                                                    · Post: <strong>@PostReport.PostStatus</strong>
+                                                    Estado: <strong>@Labels.ReportStatusLabel(PostReport.Status)</strong>
+                                                    · Denunciante: <strong>@PostReport.ReporterEmail</strong>
+                                                    · Post: <strong>@Labels.PostStatusLabel(PostReport.PostStatus)</strong>
                                                 </div>
 
                                                 @if (PostReport.PostStatus.ToString() == "Closed")

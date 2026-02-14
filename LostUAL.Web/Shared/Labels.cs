@@ -24,6 +24,9 @@ public static class Labels
         ClaimStatus.Accepted => "Aceptada",
         ClaimStatus.Rejected => "Rechazada",
         ClaimStatus.Withdrawn => "Retirada",
+        ClaimStatus.Standby => "Pausa",
+        ClaimStatus.Expired => "Expirada",
+        ClaimStatus.Resolved => "Resuelta",
         _ => s.ToString()
     };
 

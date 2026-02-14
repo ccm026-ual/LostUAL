@@ -4,6 +4,7 @@
 @using System.Net.Http.Json
 @using LostUAL.Contracts.Claims
 @using LostUAL.Contracts.Posts
+@using LostUAL.Web.Shared
 @inject HttpClient Http
 @inject NavigationManager Nav
 
@@ -51,7 +52,7 @@
                                     <option value="All">Todos</option>
                                     @foreach (var s in Enum.GetValues<ClaimStatus>())
                                     {
-                                        <option value="@s">@s</option>
+                                        <option value="@s">@Labels.ClaimStatusLabel(s)</option>
                                     }
                                 </select>
                             </div>
@@ -62,14 +63,15 @@
                                     <option value="All">Todos</option>
                                     @foreach (var t in Enum.GetValues<PostType>())
                                     {
-                                        <option value="@t">@t</option>
+                                        <option value="@t">@Labels.PostTypeLabel(t)</option>
                                     }
                                 </select>
                             </div>
 
                             <div class="col-12 col-md-4">
                                 <label class="form-label">Buscar</label>
-                                <input class="form-control" @bind="_q" placeholder="Ej: llaves, mochila..." />
+                                <input class="form-control" @bind="_q" @bind:event="oninput"
+                                placeholder="Ej: llaves, mochila..." />
                             </div>
 
                             <div class="col-12 d-flex flex-wrap gap-2 mt-2">
@@ -111,11 +113,11 @@
                         <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th>Post</th>
-                                    <th>Tipo</th>
-                                    <th>Estado</th>
-                                    <th>Creada</th>
-                                    <th class="text-end">Acciones</th>
+                                    <th class="text-center">Post</th>
+                                    <th class="text-center">Tipo</th>
+                                    <th class="text-center">Estado</th>
+                                    <th class="text-center">Creada</th>
+                                    <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
 
@@ -123,7 +125,7 @@
                                 @foreach (var c in Filtered)
                                 {
                                     <tr class="@(c.HasUnread ? "table-warning" : "")">
-                                        <td class="fw-semibold">
+                                        <td class="text-center">
                                             @c.PostTitle
                                             @if (c.HasUnread)
                                             {
@@ -131,19 +133,19 @@
                                             }
                                         </td>
 
-                                        <td>
-                                            <span class="badge bg-secondary">@c.PostType</span>
+                                        <td class="text-center">
+                                            <span class="badge bg-secondary">@Labels.PostTypeLabel(c.PostType)</span>
                                         </td>
 
-                                        <td>
-                                            <span class="badge @ClaimBadge(c.Status)">@c.Status</span>
+                                        <td class="text-center">
+                                            <span class="badge @ClaimBadge(c.Status)">@Labels.ClaimStatusLabel(c.Status)</span>
                                         </td>
 
-                                        <td class="text-muted">
+                                        <td class="text-center">
                                             @c.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         </td>
 
-                                        <td class="text-end">
+                                        <td class="text-center">
                                             @if (c.ConversationId is int convId)
                                             {
                                                 <button class="btn btn-sm @(c.HasUnread ? "btn-primary" : "btn-outline-primary")"

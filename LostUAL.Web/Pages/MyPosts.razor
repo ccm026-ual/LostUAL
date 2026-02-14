@@ -57,7 +57,8 @@
 
                             <div class="col-12 col-md-4">
                                 <label class="form-label">Buscar</label>
-                                <input class="form-control" @bind="_q" placeholder="Ej: llaves, mochila..." />
+                                <input class="form-control" @bind="_q" @bind:event="oninput"
+                                        placeholder="Ej: llaves, mochila..." />
                             </div>
 
                             <div class="col-12 d-flex flex-wrap gap-2 mt-2">
@@ -65,7 +66,7 @@
                                     <input class="form-check-input" type="checkbox" id="onlyPending"
                                            @bind="_onlyWithPendingClaims" />
                                     <label class="form-check-label" for="onlyPending">
-                                        Solo con claims pendientes
+                                        Solo con reclam. pendientes
                                     </label>
                                 </div>
 
@@ -74,7 +75,7 @@
                                     <select class="form-select form-select-sm" style="max-width: 220px;" @bind="_sort">
                                         <option value="Newest">Más recientes</option>
                                         <option value="Oldest">Más antiguos</option>
-                                        <option value="MostPending">Más claims pendientes</option>
+                                        <option value="MostPending">Más reclam. pendientes</option>
                                     </select>
 
                                     <button class="btn btn-sm btn-outline-secondary" @onclick="ClearFilters">
@@ -139,7 +140,7 @@
                                             }
                                         </td>
 
-                                        <td class="text-muted">
+                                        <td class="text-center">
                                             @p.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         </td>
 
