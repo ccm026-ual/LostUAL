@@ -4,6 +4,12 @@ using LostUAL.Contracts.Reports;
 
 public static class Labels
 {
+    public static string PostTypeLabel(PostType t) => t switch
+    {
+        PostType.Lost => "Perdido",
+        PostType.Found => "Encontrado",
+        _ => t.ToString()
+    };
     public static string ReportStatusLabel(ReportStatus s) => s switch
     {
         ReportStatus.Open => "Abierto",

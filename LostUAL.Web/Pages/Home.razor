@@ -32,29 +32,29 @@
 
                         <div class="col-12 col-lg-3">
                             <label class="form-label">Tipo</label>
-                            <InputSelect class="form-select" TValue="PostType?" @bind-Value="_type">
+                            <InputSelect class="form-select" TValue="PostType?" @bind-Value="_type" @bind-Value:after="OnFiltersChanged">
                                 <option value="">Todos</option>
                                 @foreach (var t in Enum.GetValues<PostType>())
                                 {
-                                    <option value="@t">@t</option>
+                                    <option value="@t">@Labels.PostTypeLabel(t)</option>
                                 }
                             </InputSelect>
                         </div>
 
                         <div class="col-12 col-lg-3">
                             <label class="form-label">Estado</label>
-                            <InputSelect class="form-select" TValue="PostStatus?" @bind-Value="_status">
+                            <InputSelect class="form-select" TValue="PostStatus?" @bind-Value="_status" @bind-Value:after="OnFiltersChanged">
                                 <option value="">Todos</option>
                                 @foreach (var s in Enum.GetValues<PostStatus>())
                                 {
-                                    <option value="@s">@s</option>
+                                    <option value="@s">@Labels.PostStatusLabel(s)</option>
                                 }
                             </InputSelect>
                         </div>
 
                         <div class="col-12 col-lg-3">
                             <label class="form-label">Categoría</label>
-                            <InputSelect class="form-select" TValue="int?" @bind-Value="_categoryId">
+                            <InputSelect class="form-select" TValue="int?" @bind-Value="_categoryId" @bind-Value:after="OnFiltersChanged">
                                 <option value="">Todas</option>
                                 @if (_categories is not null)
                                 {
@@ -68,7 +68,7 @@
 
                         <div class="col-12 col-lg-3">
                             <label class="form-label">Location</label>
-                            <InputSelect class="form-select" TValue="int?" @bind-Value="_locationId">
+                            <InputSelect class="form-select" TValue="int?" @bind-Value="_locationId" @bind-Value:after="OnFiltersChanged">
                                 <option value="">Todas</option>
                                 @if (_locations is not null)
                                 {
@@ -86,24 +86,21 @@
                                     <label class="form-label">Fechas</label>
                                     <div class="input-group">
                                         <span class="input-group-text">Desde</span>
-                                        <InputDate class="form-control" TValue="DateTime?" @bind-Value="_from" />
+                                        <InputDate class="form-control" TValue="DateTime?" @bind-Value="_from" @bind-Value:after="OnFiltersChanged" />
                                         <span class="input-group-text">Hasta</span>
-                                        <InputDate class="form-control" TValue="DateTime?" @bind-Value="_to" />
+                                        <InputDate class="form-control" TValue="DateTime?" @bind-Value="_to" @bind-Value:after="OnFiltersChanged" />
                                     </div>
                                 </div>
 
                                 <div class="col-6 col-md-2 col-lg-2">
                                     <label class="form-label">Por página</label>
-                                    <select class="form-select" @bind="_pageSize">
+                                    <select class="form-select" @bind="_pageSize" @bind:after="OnFiltersChanged">
                                         <option value="10">10</option>
                                         <option value="20">20</option>
                                         <option value="50">50</option>
                                     </select>
                                 </div>
 
-                                <div class="col-6 col-md-2 col-lg-2 d-grid">
-                                    <button class="btn btn-primary" @onclick="ApplyFilters">Aplicar</button>
-                                </div>
                             </div>
                         </div>
 
@@ -126,11 +123,11 @@
                                 @p.Title
                             </a>
 
-                            <span class="badge bg-secondary">@p.Type</span>
+                            <span class="badge bg-secondary">@Labels.PostTypeLabel(p.Type)</span>
                         </div>
                         <small>@p.Category · @p.Location · @p.DateApprox</small>
                         <div>
-                            <span class="badge bg-info">@p.Status</span>
+                            <span class="badge bg-info">@Labels.PostStatusLabel(p.Status)</span>
                             <small class="text-muted ms-2">@p.CreatedAtUtc</small>
                         </div>
                     </div>
@@ -299,7 +296,11 @@
         if (_categoryId is not null) qs.Add($"categoryId={_categoryId}");
         if (_locationId is not null) qs.Add($"locationId={_locationId}");
         if (_from is not null) qs.Add($"fromCreatedAtUtc={Uri.EscapeDataString(_from.Value.ToString("O"))}");
-        if (_to is not null) qs.Add($"toCreatedAtUtc={Uri.EscapeDataString(_to.Value.ToString("O"))}");
+        if (_to is not null)
+        {
+            var toInclusive = _to.Value.Date.AddDays(1).AddTicks(-1);
+            qs.Add($"toCreatedAtUtc={Uri.EscapeDataString(toInclusive.ToString("O"))}");
+        }
 
         var url = "api/posts/paged?" + string.Join("&", qs);
 
@@ -351,6 +352,11 @@
     {
         if (_page >= TotalPages) return;
         _page++;
+        await LoadPagedAsync();
+    }
+    private async Task OnFiltersChanged()
+    {
+        _page = 1;
         await LoadPagedAsync();
     }
 }
