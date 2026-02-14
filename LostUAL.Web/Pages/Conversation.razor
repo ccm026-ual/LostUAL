@@ -65,7 +65,7 @@ else
                 @if (_status == ConversationStatus.ReadOnly)
                 {
                     <div class="alert alert-warning">
-                        Esta conversación está en modo solo lectura.
+                        Este chat está en modo solo lectura.
                     </div>
                 }
 
@@ -181,7 +181,7 @@ else
                             <AuthorizeView>
                                 <Authorized>
                                     <button class="btn btn-danger w-100 btn-sm" @onclick="() => ShowReport = true">
-                                        Reportar conversación
+                                        Reportar chat
                                     </button>
                                 </Authorized>
                             </AuthorizeView>

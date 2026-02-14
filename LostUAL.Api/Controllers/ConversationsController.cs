@@ -73,7 +73,7 @@ public class ConversationsController : ControllerBase
             return Forbid();
 
         var canAccept = isOwner && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
-        var canReject = (isOwner || isMod) && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
+        var canReject = (isOwner) && (info.ClaimStatus == ClaimStatus.Pending || info.ClaimStatus == ClaimStatus.Standby);
         var canSend = (isOwner || isClaimant) && conv.Status == ConversationStatus.Active;
         var canReport = (isOwner || isClaimant);
 

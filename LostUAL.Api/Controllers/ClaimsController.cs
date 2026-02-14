@@ -152,8 +152,6 @@ public class ClaimsController : ControllerBase
         if (string.IsNullOrWhiteSpace(userId))
             return Unauthorized();
 
-        var isMod = User.IsInRole("Admin") || User.IsInRole("Moderator");
-
         var claim = await _db.Claims
             .Include(c => c.Post)
             .Include(c => c.Conversation)
@@ -164,7 +162,7 @@ public class ClaimsController : ControllerBase
 
         var isOwner = claim.Post!.CreatedByUserId == userId;
 
-        if (!(isOwner || isMod))
+        if (!(isOwner))
             return Forbid();
 
         if (claim.Status is not (ClaimStatus.Pending or ClaimStatus.Standby))
