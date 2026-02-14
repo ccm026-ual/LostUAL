@@ -36,6 +36,7 @@ public static class Labels
         PostStatus.InClaim => "En reclamación",
         PostStatus.Closed => "Cerrado",
         PostStatus.Resolved => "Resuelto",
+        PostStatus.ModeratorClosed => "Cerrado mod.",
         _ => s.ToString()
     };
 }

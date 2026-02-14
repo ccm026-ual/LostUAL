@@ -1,0 +1,235 @@
+﻿@page "/account"
+@attribute [Authorize]
+
+@using System.Net.Http.Json
+@using System.ComponentModel.DataAnnotations
+@using LostUAL.Contracts.Auth
+
+@inject HttpClient Http
+
+<div class="container py-3">
+
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+            <h3 class="mb-1">Mi cuenta</h3>
+            <div class="text-muted small">Perfil y seguridad de tu cuenta.</div>
+        </div>
+
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+
+    @if (_profile is null)
+    {
+        <p>@(_loading ? "Cargando..." : "")</p>
+    }
+    else
+    {
+        <div class="row g-4">
+
+            <div class="col-12 col-lg-7">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="mb-3">Perfil</h5>
+
+                        <div class="mb-2">
+                            <div class="text-muted small">Email</div>
+                            <div class="fw-semibold">@_profile.Email</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="text-muted small">Roles</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var r in _profile.Roles)
+                                {
+                                    <span class="badge bg-secondary">@r</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="mb-0">
+                            <div class="text-muted small">Fecha de alta</div>
+                            <div class="fw-semibold">@_profile.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-5">
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h5 class="mb-3">Cambiar contraseña</h5>
+
+                        @if (!string.IsNullOrWhiteSpace(_okPassword))
+                        {
+                            <div class="alert alert-success">@_okPassword</div>
+                        }
+
+                        <EditForm Model="_pwdForm" OnValidSubmit="ChangePasswordAsync">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div class="mb-2">
+                                <label class="form-label">Contraseña actual</label>
+                                <InputText class="form-control" type="password" @bind-Value="_pwdForm.CurrentPassword" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Nueva contraseña</label>
+                                <InputText class="form-control" type="password" @bind-Value="_pwdForm.NewPassword" />
+                            </div>
+
+                            <button class="btn btn-primary w-100" disabled="@_loadingPassword">
+                                @(_loadingPassword ? "Guardando..." : "Cambiar contraseña")
+                            </button>
+                        </EditForm>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="mb-3">Cambiar email</h5>
+
+                        @if (!string.IsNullOrWhiteSpace(_okEmail))
+                        {
+                            <div class="alert alert-success">@_okEmail</div>
+                        }
+
+                        <EditForm Model="_emailForm" OnValidSubmit="ChangeEmailAsync">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+
+                            <div class="mb-2">
+                                <label class="form-label">Nuevo email</label>
+                                <InputText class="form-control" @bind-Value="_emailForm.NewEmail" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Contraseña actual</label>
+                                <InputText class="form-control" type="password" @bind-Value="_emailForm.CurrentPassword" />
+                            </div>
+
+                            <button class="btn btn-outline-primary w-100" disabled="@_loadingEmail">
+                                @(_loadingEmail ? "Guardando..." : "Cambiar email")
+                            </button>
+
+                            <div class="text-muted small mt-2">
+                                Puede que necesites cerrar sesión y volver a entrar para ver el email actualizado.
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private sealed class ChangePasswordForm
+    {
+        [Required] public string CurrentPassword { get; set; } = "";
+        [Required] public string NewPassword { get; set; } = "";
+    }
+
+    private sealed class ChangeEmailForm
+    {
+        [Required, EmailAddress] public string NewEmail { get; set; } = "";
+        [Required] public string CurrentPassword { get; set; } = "";
+    }
+
+    private bool _loading = true;
+    private string? _error;
+
+    private AccountProfileDto? _profile;
+
+    private bool _loadingPassword;
+    private bool _loadingEmail;
+
+    private string? _okPassword;
+    private string? _okEmail;
+
+    private ChangePasswordForm _pwdForm = new();
+    private ChangeEmailForm _emailForm = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            _profile = await Http.GetFromJsonAsync<AccountProfileDto>("/api/auth/me");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        _okPassword = null;
+        _error = null;
+        _loadingPassword = true;
+
+        try
+        {
+            var req = new ChangePasswordRequest(_pwdForm.CurrentPassword, _pwdForm.NewPassword);
+            var res = await Http.PostAsJsonAsync("/api/auth/change-password", req);
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var errors = await res.Content.ReadFromJsonAsync<List<string>>();
+                _error = errors is { Count: > 0 } ? string.Join(" · ", errors) : "No se pudo cambiar la contraseña.";
+                return;
+            }
+
+            _okPassword = "Contraseña actualizada.";
+            _pwdForm = new();
+        }
+        finally
+        {
+            _loadingPassword = false;
+        }
+    }
+
+    private async Task ChangeEmailAsync()
+    {
+        _okEmail = null;
+        _error = null;
+        _loadingEmail = true;
+
+        try
+        {
+            var req = new ChangeEmailRequest(_emailForm.CurrentPassword, _emailForm.NewEmail);
+            var res = await Http.PostAsJsonAsync("/api/auth/change-email", req);
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var errors = await res.Content.ReadFromJsonAsync<List<string>>();
+                _error = errors is { Count: > 0 } ? string.Join(" · ", errors) : "No se pudo cambiar el email.";
+                return;
+            }
+
+            _okEmail = "Email actualizado.";
+            _emailForm = new();
+
+            await LoadAsync();
+        }
+        finally
+        {
+            _loadingEmail = false;
+        }
+    }
+}

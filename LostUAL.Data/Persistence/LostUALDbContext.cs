@@ -17,7 +17,6 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Claim> Claims => Set<Claim>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
     public DbSet<Message> Messages => Set<Message>();
-    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Report> Reports => Set<Report>();
     public DbSet<ConversationReport> ConversationReports => Set<ConversationReport>();
     public DbSet<PostReport> PostReports => Set<PostReport>();
@@ -122,9 +121,6 @@ public class LostUALDbContext : IdentityDbContext<ApplicationUser>
 
         modelBuilder.Entity<Message>()
             .HasIndex(m => new { m.ConversationId, m.CreatedAtUtc });
-
-        modelBuilder.Entity<Notification>()
-            .HasIndex(n => new { n.UserId, n.ReadAtUtc });
 
         modelBuilder.Entity<Report>()
             .HasIndex(r => new { r.PostId, r.CreatedAtUtc });

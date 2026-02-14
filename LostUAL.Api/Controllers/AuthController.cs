@@ -1,4 +1,5 @@
-﻿using LostUAL.Data.Identity;
+﻿using LostUAL.Contracts.Auth;
+using LostUAL.Data.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -40,7 +41,8 @@ public class AuthController : ControllerBase
         var user = new ApplicationUser
         {
             UserName = email,
-            Email = email
+            Email = email,
+            CreatedAtUtc = DateTime.UtcNow
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
@@ -73,13 +75,22 @@ public class AuthController : ControllerBase
 
     [HttpGet("me")]
     [Authorize]
-    public ActionResult<object> Me()
+    public async Task<ActionResult<AccountProfileDto>> Me()
     {
-        return Ok(new
-        {
-            UserId = User.FindFirstValue(ClaimTypes.NameIdentifier),
-            Email = User.FindFirstValue(ClaimTypes.Email)
-        });
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return Unauthorized();
+
+        var roles = await _userManager.GetRolesAsync(user);
+
+        return Ok(new AccountProfileDto(
+            UserId: user.Id,
+            Email: user.Email ?? user.UserName ?? "",
+            Roles: roles.ToList(),
+            CreatedAtUtc: user.CreatedAtUtc
+        ));
     }
 
     private async Task<(string token, DateTime expiresAtUtc)> CreateJwtAsync(ApplicationUser user)
@@ -117,4 +128,49 @@ public class AuthController : ControllerBase
         return (new JwtSecurityTokenHandler().WriteToken(token), expires);
     }
 
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return Unauthorized();
+
+        var result = await _userManager.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
+        if (!result.Succeeded)
+            return BadRequest(result.Errors.Select(e => e.Description));
+
+        return Ok();
+    }
+
+    [HttpPost("change-email")]
+    [Authorize]
+    public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailRequest req)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId)) return Unauthorized();
+
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null) return Unauthorized();
+
+        if (!await _userManager.CheckPasswordAsync(user, req.CurrentPassword))
+            return BadRequest(new[] { "La contraseña actual no es válida." });
+
+        var existing = await _userManager.FindByEmailAsync(req.NewEmail);
+        if (existing is not null && existing.Id != user.Id)
+            return BadRequest(new[] { "Ese email ya está en uso." });
+
+        user.Email = req.NewEmail;
+        user.UserName = req.NewEmail;
+
+        var update = await _userManager.UpdateAsync(user);
+        if (!update.Succeeded)
+            return BadRequest(update.Errors.Select(e => e.Description));
+
+        return Ok();
+    }
 }
+
+

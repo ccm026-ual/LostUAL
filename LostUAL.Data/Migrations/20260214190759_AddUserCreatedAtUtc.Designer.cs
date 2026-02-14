@@ -3,6 +3,7 @@ using System;
 using LostUAL.Data.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace LostUAL.Data.Migrations
 {
     [DbContext(typeof(LostUALDbContext))]
-    partial class LostUALDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260214190759_AddUserCreatedAtUtc")]
+    partial class AddUserCreatedAtUtc
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.12");
@@ -287,6 +290,43 @@ namespace LostUAL.Data.Migrations
                     b.HasIndex("ConversationId", "CreatedAtUtc");
 
                     b.ToTable("Messages");
+                });
+
+            modelBuilder.Entity("LostUAL.Data.Entities.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ClaimId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ConversationId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("PostId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Text")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "ReadAtUtc");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("LostUAL.Data.Entities.PostReport", b =>
