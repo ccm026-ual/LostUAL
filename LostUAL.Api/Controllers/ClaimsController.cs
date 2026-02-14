@@ -144,7 +144,7 @@ public class ClaimsController : ControllerBase
             postStatus = claim.Post.Status
         });
     }
-
+    /*
     [HttpPost("{id:int}/reject")]
     public async Task<IActionResult> Reject(int id, CancellationToken ct)
     {
@@ -184,7 +184,99 @@ public class ClaimsController : ControllerBase
             claimStatus = claim.Status,
             conversationStatus = claim.Conversation?.Status
         });
+    }*/
+
+    [HttpPost("{id:int}/reject")]
+    public async Task<IActionResult> Reject(int id, CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userId))
+            return Unauthorized();
+
+        var claim = await _db.Claims
+            .Include(c => c.Post)
+            .Include(c => c.Conversation)
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+        if (claim is null)
+            return NotFound();
+
+        var isOwner = claim.Post!.CreatedByUserId == userId;
+        if (!isOwner)
+            return Forbid();
+
+        var now = DateTime.UtcNow;
+
+        if (claim.Status == ClaimStatus.Accepted)
+        {
+            if (claim.Post.Status != PostStatus.InClaim)
+                return BadRequest("La claim está aceptada pero el post no está en InClaim.");
+
+            claim.Status = ClaimStatus.Rejected;
+            claim.IsActive = false;
+            claim.ResolvedAtUtc = now;
+            claim.AutoResolveAtUtc = null;
+            claim.OwnerConfirmedAtUtc = null;
+            claim.ClaimantConfirmedAtUtc = null;
+
+            if (claim.Conversation is not null)
+                claim.Conversation.Status = ConversationStatus.ReadOnly;
+
+            claim.Post.Status = PostStatus.Open;
+
+            var standbyClaims = await _db.Claims
+                .Include(c => c.Conversation)
+                .Where(c => c.PostId == claim.PostId
+                            && c.Id != claim.Id
+                            && c.Status == ClaimStatus.Standby)
+                .ToListAsync(ct);
+
+            foreach (var c in standbyClaims)
+            {
+                c.Status = ClaimStatus.Pending;
+                c.IsActive = true;
+                c.ResolvedAtUtc = null;
+                c.AutoResolveAtUtc = null;
+                c.OwnerConfirmedAtUtc = null;
+                c.ClaimantConfirmedAtUtc = null;
+
+                if (c.Conversation is not null)
+                    c.Conversation.Status = ConversationStatus.Active; 
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new
+            {
+                claimId = claim.Id,
+                postId = claim.PostId,
+                claimStatus = claim.Status,
+                postStatus = claim.Post.Status,
+                reopenedClaims = standbyClaims.Count
+            });
+        }
+
+        if (claim.Status is not (ClaimStatus.Pending or ClaimStatus.Standby))
+            return BadRequest("Solo se puede rechazar una reclamación en estado Pendiente o Pausa (o una Aceptada si el post está en InClaim).");
+
+        claim.Status = ClaimStatus.Rejected;
+        claim.IsActive = false;
+        claim.ResolvedAtUtc = now;
+
+        if (claim.Conversation is not null)
+            claim.Conversation.Status = ConversationStatus.ReadOnly;
+
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(new
+        {
+            claimId = claim.Id,
+            postId = claim.PostId,
+            claimStatus = claim.Status,
+            conversationStatus = claim.Conversation?.Status
+        });
     }
+
 
     [HttpPost("{id:int}/confirm")]
     public async Task<IActionResult> ConfirmResolution(int id, CancellationToken ct)
@@ -273,11 +365,16 @@ public class ClaimsController : ControllerBase
             claim.Post.Status = PostStatus.Open;
 
             var standby = await _db.Claims
+                .Include(c => c.Conversation)
                 .Where(c => c.PostId == claim.PostId && c.Id != claim.Id && c.Status == ClaimStatus.Standby)
                 .ToListAsync(ct);
 
             foreach (var c in standby)
+            {
                 c.Status = ClaimStatus.Pending;
+                if (c.Conversation is not null)
+                    c.Conversation.Status = ConversationStatus.Active;
+            }
         }
 
         await _db.SaveChangesAsync(ct);

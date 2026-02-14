@@ -360,8 +360,8 @@ public class PostsController : ControllerBase
             return BadRequest("Este post está cerrado. No se pueden crear reclamaciones nuevas.");
         if (post.Status == PostStatus.Resolved)
             return BadRequest("Este post ya está resuelto.");
-        if (post.Status == PostStatus.InClaim)
-            return BadRequest("Este post ya está en proceso de reclamación.");
+        /*if (post.Status == PostStatus.InClaim)
+            return BadRequest("Este post ya está en proceso de reclamación.");*/
         /*
         var already = await _db.Claims.AnyAsync(c =>
             c.PostId == id &&
@@ -381,14 +381,14 @@ public class PostsController : ControllerBase
         {
             PostId = id,
             ClaimantUserId = userId,
-            Status = ClaimStatus.Pending,
+            Status = post.Status == PostStatus.Open ? ClaimStatus.Pending : ClaimStatus.Standby,
             CreatedAtUtc = DateTime.UtcNow
         };
 
         var conversation = new Conversation
         {
             Claim = claim,
-            Status = ConversationStatus.Active,
+            Status = post.Status == PostStatus.Open ? ConversationStatus.Active : ConversationStatus.ReadOnly,
             CreatedAtUtc = DateTime.UtcNow,
             Messages = new List<Message>
         {
