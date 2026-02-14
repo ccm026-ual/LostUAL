@@ -103,10 +103,10 @@ public class ClaimsController : ControllerBase
             return Forbid();
 
         if (claim.Status is not (ClaimStatus.Pending or ClaimStatus.Standby))
-            return BadRequest("Solo se puede aceptar una claim en estado Pending o Standby.");
+            return BadRequest("Solo se puede aceptar una reclamación en estado Pendiente o Pausa.");
 
         if (claim.Post.Status != PostStatus.Open)
-            return BadRequest("Solo se puede aceptar si el post está en estado Open.");
+            return BadRequest("Solo se puede aceptar si el post está en estado Abierto.");
 
         var alreadyAccepted = await _db.Claims.AnyAsync(c =>
             c.PostId == claim.PostId &&
@@ -114,7 +114,7 @@ public class ClaimsController : ControllerBase
             c.Status == ClaimStatus.Accepted, ct);
 
         if (alreadyAccepted)
-            return Conflict("Ya existe una claim aceptada para este post.");
+            return Conflict("Ya existe una reclamación aceptada para este post.");
 
         var now = DateTime.UtcNow;
 
@@ -166,7 +166,7 @@ public class ClaimsController : ControllerBase
             return Forbid();
 
         if (claim.Status is not (ClaimStatus.Pending or ClaimStatus.Standby))
-            return BadRequest("Solo se puede rechazar una claim en estado Pending o Standby.");
+            return BadRequest("Solo se puede rechazar una reclamación en estado Pendiente o Pausa.");
 
         claim.Status = ClaimStatus.Rejected;
         claim.IsActive = false;
