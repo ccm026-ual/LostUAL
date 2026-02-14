@@ -38,6 +38,9 @@ public class AuthController : ControllerBase
     {
         var email = request.Email.Trim();
 
+        if (!IsAllowedEmail(email))
+            return BadRequest("Solo se permiten correos @ual.es o @inlumine.ual.es");
+
         var user = new ApplicationUser
         {
             UserName = email,
@@ -46,9 +49,16 @@ public class AuthController : ControllerBase
         };
 
         var result = await _userManager.CreateAsync(user, request.Password);
-        await _userManager.AddToRoleAsync(user, "User");
         if (!result.Succeeded)
-            return BadRequest(result.Errors.Select(e => e.Description));
+        {
+            return BadRequest(result.Errors.Select(e => e.Description).ToList());
+        }
+
+        var roleResult = await _userManager.AddToRoleAsync(user, "User");
+        if (!roleResult.Succeeded)
+        {
+            return BadRequest(roleResult.Errors.Select(e => e.Description).ToList());
+        }
 
         return Ok();
     }
@@ -155,6 +165,9 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByIdAsync(userId);
         if (user is null) return Unauthorized();
 
+        if (!IsAllowedEmail(req.NewEmail))
+            return BadRequest("Solo se permiten correos @ual.es o @inlumine.ual.es");
+
         if (!await _userManager.CheckPasswordAsync(user, req.CurrentPassword))
             return BadRequest(new[] { "La contraseña actual no es válida." });
 
@@ -170,6 +183,11 @@ public class AuthController : ControllerBase
             return BadRequest(update.Errors.Select(e => e.Description));
 
         return Ok();
+    }
+    static bool IsAllowedEmail(string email)
+    {
+        email = email.Trim().ToLowerInvariant();
+        return email.EndsWith("@ual.es") || email.EndsWith("@inlumine.ual.es");
     }
 }
 
