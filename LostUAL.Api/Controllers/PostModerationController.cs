@@ -227,7 +227,7 @@ public sealed class PostModerationController : ControllerBase
     {
         if (post.Status != PostStatus.Closed)
         {
-            post.Status = PostStatus.Closed;
+            post.Status = PostStatus.ModeratorClosed;
             post.ClosedAtUtc = DateTime.UtcNow;
             post.ClosedByUserId = modUserId;
             post.ClosedReason = string.IsNullOrWhiteSpace(closedReason)

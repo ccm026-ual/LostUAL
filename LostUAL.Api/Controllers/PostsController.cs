@@ -6,11 +6,12 @@ using LostUAL.Contracts.Shared;
 using LostUAL.Data.Entities;
 using LostUAL.Data.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Hosting;
 
 
 namespace LostUAL.Api.Controllers;
@@ -78,7 +79,6 @@ public class PostsController : ControllerBase
             return Unauthorized();
 
         var isAdminOrModerator = User.IsInRole("Admin") || User.IsInRole("Moderator");
-
         var info = await _db.Posts
             .AsNoTracking()
             .Where(p => p.Id == id)
@@ -89,6 +89,15 @@ public class PostsController : ControllerBase
             return NotFound();
 
         var isOwner = info.CreatedByUserId == userId;
+
+        if (info.Status == PostStatus.ModeratorClosed)
+        {
+            if (!isOwner && !isAdminOrModerator)
+                return NotFound();
+
+        }
+
+       
 
       
         /*if ((info.Status == PostStatus.Closed || info.Status == PostStatus.Resolved) && !(isOwner || isAdminOrModerator))
@@ -474,6 +483,7 @@ public class PostsController : ControllerBase
             .AsNoTracking()
             .OrderByDescending(p => p.CreatedAtUtc)
             .Take(take)
+            .Where(p => p.Status != PostStatus.ModeratorClosed)
             .Select(p => new PostPreviewDto(
                 p.Id,
                 p.Title,
@@ -520,6 +530,7 @@ public class PostsController : ControllerBase
         var total = await q.CountAsync(ct);
 
         var items = await q
+            .Where(p => p.Status != PostStatus.ModeratorClosed)
             .OrderByDescending(p => p.CreatedAtUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
