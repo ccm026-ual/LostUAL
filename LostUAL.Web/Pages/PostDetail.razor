@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using LostUAL.Contracts.Posts
 @using LostUAL.Contracts.Reports
+@using LostUAL.Web.Shared
 @using System.Net
 @using System.Security.Claims
 @using System.Net.Http.Json
@@ -35,8 +36,8 @@ else if (post is not null)
             </div>
 
             <div class="text-end">
-                <span class="badge bg-secondary me-1">@post.Type</span>
-                <span class="badge bg-info">@post.Status</span>
+                <span class="badge bg-secondary me-1">@Labels.PostTypeLabel(post.Type)</span>
+                <span class="badge bg-info">@Labels.PostStatusLabel(post.Status)</span>
                 <div class="text-muted small mt-1">
                     @post.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                 </div>
@@ -99,7 +100,7 @@ else if (post is not null)
                             </div>
 
                             <div class="col-12 col-md-6">
-                                <div class="text-muted small">Location</div>
+                                <div class="text-muted small">Localización</div>
                                 <div>@post.Location</div>
                             </div>
 
@@ -115,7 +116,7 @@ else if (post is not null)
 
                             <div class="col-12">
                                 <div class="text-muted small">Creado por</div>
-                                <div class="text-truncate">@post.CreatedByUserId</div>
+                                <div class="text-truncate">@post.UserEmail</div>
                             </div>
                         </div>
                     </div>

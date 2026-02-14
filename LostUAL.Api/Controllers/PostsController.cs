@@ -110,7 +110,11 @@ public class PostsController : ControllerBase
                 p.Status,
                 p.CreatedAtUtc,
                 p.CreatedByUserId,
-                p.PhotoUrl
+                p.PhotoUrl,
+                _db.Users
+                    .Where(u => u.Id == p.CreatedByUserId)
+                    .Select(u => u.Email)  
+                    .FirstOrDefault()
             ))
             .FirstOrDefaultAsync(ct);
 
