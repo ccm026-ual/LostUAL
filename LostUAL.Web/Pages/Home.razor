@@ -128,7 +128,7 @@
                         <small>@p.Category · @p.Location · @p.DateApprox</small>
                         <div>
                             <span class="badge bg-info">@Labels.PostStatusLabel(p.Status)</span>
-                            <small class="text-muted ms-2">@p.CreatedAtUtc</small>
+                            <small class="text-muted ms-2">@p.CreatedAtUtc.ToLocalTime()</small>
                         </div>
                     </div>
                 }

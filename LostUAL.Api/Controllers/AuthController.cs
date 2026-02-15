@@ -73,7 +73,8 @@ public class AuthController : ControllerBase
         if (await _userManager.IsLockedOutAsync(user))
         {
             var end = await _userManager.GetLockoutEndDateAsync(user);
-            return Unauthorized($"Usuario bloqueado hasta {end?.UtcDateTime:O}");
+            var until = end?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "";
+            return StatusCode(StatusCodes.Status423Locked,$"Usuario bloqueado por moderación hasta {until}");
         }
 
         var ok = await _userManager.CheckPasswordAsync(user, request.Password);

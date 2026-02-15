@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net;
+using System.Net.Http.Json;
 
 namespace LostUAL.Web.Auth;
 
@@ -20,6 +21,15 @@ public sealed class AuthService
 
         if (!resp.IsSuccessStatusCode)
         {
+            if (resp.StatusCode == HttpStatusCode.Unauthorized)
+                return (false, "Email o contraseña incorrectos.");
+
+            if((int)resp.StatusCode == 423)
+            {
+                var body2 = await resp.Content.ReadAsStringAsync();
+                return (false, body2);
+            }
+
             var body = await resp.Content.ReadAsStringAsync();
             return (false, $"Login falló: {(int)resp.StatusCode} {resp.ReasonPhrase}. {body}");
         }
