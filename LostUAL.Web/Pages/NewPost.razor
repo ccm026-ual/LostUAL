@@ -10,7 +10,7 @@
     <div>
         <h3 class="mb-1">Nuevo post</h3>
         <div class="text-muted small">
-            Publica un nuevo post
+            Publica un nuevo post. Recuerda no incluir información privada y/o sensible en público.
         </div>
     </div>
 </div>
@@ -158,6 +158,12 @@ else
         if (model.Type == PostType.Lost && !string.IsNullOrWhiteSpace(_photoError))
         {
             message = "Revisa la foto seleccionada.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.Title) || string.IsNullOrWhiteSpace(model.Description))
+        {
+            message = "Título y descripción son obligatorios.";
             return;
         }
 

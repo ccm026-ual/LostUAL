@@ -482,8 +482,8 @@ public class PostsController : ControllerBase
         var posts = await _db.Posts
             .AsNoTracking()
             .OrderByDescending(p => p.CreatedAtUtc)
-            .Take(take)
             .Where(p => p.Status != PostStatus.ModeratorClosed)
+            .Take(take)
             .Select(p => new PostPreviewDto(
                 p.Id,
                 p.Title,

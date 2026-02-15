@@ -13,8 +13,6 @@
 @inject IJSRuntime JS
 @attribute [Authorize]
 
-<h3>Detalle del post</h3>
-
 @if (loading)
 {
     <p>Cargando...</p>
@@ -25,22 +23,28 @@ else if (notFound)
 }
 else if (post is not null)
 {
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+            <h3 class="mb-1">Detalles del post: @post.Title</h3>
+            <div class="text-muted small">
+                Consulta los detalles del post y toma acciones
+            </div>
+        </div>
+    </div>
+
     <div class="container py-3">
 
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
             <div>
                 <h3 class="mb-1">@post.Title</h3>
                 <div class="text-muted small">
-                    @post.Category · @post.Location · @post.DateApprox
+                    @post.Category · @post.Location
                 </div>
             </div>
 
             <div class="text-end">
                 <span class="badge bg-secondary me-1">@Labels.PostTypeLabel(post.Type)</span>
                 <span class="badge bg-info">@Labels.PostStatusLabel(post.Status)</span>
-                <div class="text-muted small mt-1">
-                    @post.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
-                </div>
             </div>
         </div>
 
@@ -66,6 +70,12 @@ else if (post is not null)
         {
             <div class="alert alert-secondary">
                 Este post está <strong>cerrado</strong>.
+            </div>
+        }
+        else if (post.Status == PostStatus.ModeratorClosed)
+        {
+            <div class="alert alert-secondary">
+                Este post está <strong>cerrado por moderación</strong>.
             </div>
         }
 
@@ -110,7 +120,7 @@ else if (post is not null)
                             </div>
 
                             <div class="col-12 col-md-6">
-                                <div class="text-muted small">Creado</div>
+                                <div class="text-muted small">Fecha creación</div>
                                 <div>@post.CreatedAtUtc.ToLocalTime()</div>
                             </div>
 
@@ -184,7 +194,8 @@ else if (post is not null)
                             {
                                 <div class="card border-warning">
                                     <div class="card-body">
-                                        <div class="fw-semibold">Reporte</div>
+                                        <h5 class="text-center mb-2">Moderación</h5>
+                                        <hr class="my-2" />
 
                                         @if (PostReport is null && string.IsNullOrWhiteSpace(ModError))
                                         {
@@ -198,34 +209,49 @@ else if (post is not null)
                                             }
                                             else if (PostReport is not null)
                                             {
-                                                <div class="mt-2 fw-semibold">@PostReport.Reason</div>
+
+                                                <div>Reporte: @PostReport.Reason</div>
+                                               
 
                                                 <div class="text-muted small">
                                                     Estado: <strong>@Labels.ReportStatusLabel(PostReport.Status)</strong>
-                                                    · Denunciante: <strong>@PostReport.ReporterEmail</strong>
-                                                    · Post: <strong>@Labels.PostStatusLabel(PostReport.PostStatus)</strong>
+       
+         
                                                 </div>
 
-                                                @if (PostReport.PostStatus.ToString() == "Closed")
+                                                <div class="text-muted small">
+                                                    Denunciante: <strong>@PostReport.ReporterEmail</strong>
+                                                </div>
+
+                                                @if (PostReport.PostStatus == PostStatus.ModeratorClosed)
                                                 {
-                                                    <div class="text-muted small">
-                                                        Cerrado: @PostReport.ClosedAtUtc?.ToLocalTime()
+                                                <div class="text-muted small">
+                                                   Cerrado: <strong>@PostReport.ClosedAtUtc?.ToLocalTime()</strong>
+                                                </div>
+
+
                                                         @if (!string.IsNullOrWhiteSpace(PostReport.ClosedReason))
                                                         {
-                                                            <span> · Motivo: @PostReport.ClosedReason</span>
+                                                            <div class="text-muted small">
+                                                    Motivo: <strong>@PostReport.ClosedReason</strong>
+                                                            </div>
+                                                            
                                                         }
-                                                    </div>
+                                                   
                                                 }
 
                                                 @if (PostReport.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(PostReport.BlockedEmail))
                                                 {
                                                     <div class="text-muted small">
-                                                        Bloqueado: <strong>@PostReport.BlockedEmail</strong>
+                                                        Usuario bloqueado: <strong>@PostReport.BlockedEmail</strong>
+                                                        </div>
                                                         @if (PostReport.LockoutEndUtc is not null)
                                                         {
-                                                            <span> · Hasta: @PostReport.LockoutEndUtc.Value.ToLocalTime()</span>
+                                                            <div class="text-muted small">
+                                                            Hasta: <strong>@PostReport.LockoutEndUtc.Value.ToLocalTime()</strong>
+                                                            </div>
                                                         }
-                                                    </div>
+                                                   
                                                 }
                                             }
 
@@ -233,26 +259,29 @@ else if (post is not null)
                                             {
                                                 <hr class="my-3" />
 
+
+
                                                 <div class="row g-2">
-                                                    <div class="col-4">
-                                                        <input class="form-control" type="number" min="1" @bind="BlockDays" />
-                                                    </div>
-                                                    <div class="col-8">
-                                                        <input class="form-control" placeholder="Nota (opcional)" @bind="ModNote" />
-                                                    </div>
-                                                </div>
-
-                                                <div class="d-flex flex-wrap gap-2 mt-2">
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled="@(ModBusy)" @onclick="DismissPostReport">
-                                                        Dismiss
+                                                    <button type="button" class="btn btn-secondary btn-sm" disabled="@(ModBusy)" @onclick="DismissPostReport">
+                                                        Desestimar
                                                     </button>
 
+                                   
+                                                    <div class="row g-2">
+                                                        <div class="col-4">
+                                                            <label class="form-label small mb-1">Días de bloq.</label>
+                                                            <input class="form-control" type="number" min="1" @bind="BlockDays" />
+                                                        </div>
+                                                        <div class="col-8">
+                                                            <label class="form-label small mb-1">Nota</label>
+                                                            <input class="form-control" placeholder="Nota (opcional)" @bind="ModNote" />
+                                                        </div>
+                                                    </div>
                                                     <button type="button" class="btn btn-warning btn-sm" disabled="@(ModBusy)" @onclick="ClosePostFromReport">
-                                                        Close post
+                                                        Cerrar post
                                                     </button>
-
                                                     <button type="button" class="btn btn-danger btn-sm" disabled="@(ModBusy)" @onclick="CloseBlockFromReport">
-                                                        Close + Block
+                                                        Cerrar y bloquear usuario
                                                     </button>
                                                 </div>
                                             }
@@ -262,6 +291,8 @@ else if (post is not null)
                             }
                         </Authorized>
                     </AuthorizeView>
+
+
 
                 </div>
             </div>

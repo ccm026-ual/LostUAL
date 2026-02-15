@@ -12,7 +12,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
         <div>
             <h3 class="mb-1">Mi cuenta</h3>
-            <div class="text-muted small">Perfil y seguridad de tu cuenta.</div>
+            <div class="text-muted small">Perfil y seguridad de tu cuenta</div>
         </div>
 
     </div>
@@ -45,7 +45,13 @@
                             <div class="d-flex flex-wrap gap-2">
                                 @foreach (var r in _profile.Roles)
                                 {
+                                    if(r == "Admin")
+                                    {
+                                        <span class="badge bg-warning text-dark">@r</span>
+                                    }
+                                    else{
                                     <span class="badge bg-secondary">@r</span>
+                                    }
                                 }
                             </div>
                         </div>
@@ -113,7 +119,7 @@
                                 <InputText class="form-control" type="password" @bind-Value="_emailForm.CurrentPassword" />
                             </div>
 
-                            <button class="btn btn-outline-primary w-100" disabled="@_loadingEmail">
+                            <button class="btn btn-primary w-100" disabled="@_loadingEmail">
                                 @(_loadingEmail ? "Guardando..." : "Cambiar email")
                             </button>
 

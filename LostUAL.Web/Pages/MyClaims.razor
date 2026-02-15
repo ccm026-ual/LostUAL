@@ -114,7 +114,6 @@
                             <thead>
                                 <tr>
                                     <th class="text-center">Post</th>
-                                    <th class="text-center">Tipo</th>
                                     <th class="text-center">Estado</th>
                                     <th class="text-center">Creada</th>
                                     <th class="text-center">Acciones</th>
@@ -126,15 +125,12 @@
                                 {
                                     <tr class="@(c.HasUnread ? "table-warning" : "")">
                                         <td class="text-center">
-                                            @c.PostTitle
-                                            @if (c.HasUnread)
-                                            {
-                                                <span class="badge bg-warning text-dark ms-2">Nuevo</span>
-                                            }
-                                        </td>
-
-                                        <td class="text-center">
-                                            <span class="badge bg-secondary">@Labels.PostTypeLabel(c.PostType)</span>
+                                            <a class="fw-semibold text-decoration-none"
+                                               href="@($"/posts/{c.PostId}")">
+                                                @c.PostTitle
+                                            </a>
+                                            <div class="small text-muted">@Labels.PostTypeLabel(c.PostType)</div>
+                                            
                                         </td>
 
                                         <td class="text-center">
@@ -148,6 +144,11 @@
                                         <td class="text-center">
                                             @if (c.ConversationId is int convId)
                                             {
+                                                @if (c.HasUnread)
+                                                {
+                                                    <span class="badge bg-warning text-dark ms-2 me-2">Nuevo</span>
+
+                                                }
                                                 <button class="btn btn-sm @(c.HasUnread ? "btn-primary" : "btn-outline-primary")"
                                                         @onclick="@(() => Nav.NavigateTo($"/conversations/{convId}"))">
                                                     Abrir chat

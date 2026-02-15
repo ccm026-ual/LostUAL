@@ -95,7 +95,7 @@ else
                         }
                     </div>
                 </div>
-
+                @if(!IsModerationView){
                 <div class="card">
                     <div class="card-body">
                         <EditForm Model="_send" OnValidSubmit="SendAsync">
@@ -113,6 +113,7 @@ else
                         }
                     </div>
                 </div>
+                }
             </div>
 
             <div class="col-12 col-lg-4">
@@ -170,21 +171,18 @@ else
 
                                 @if (_canWithdraw)
                                 {
-                                    <button class="btn btn-outline-danger btn-sm" @onclick="WithdrawAsync" disabled="@_acting">
+                                    <button class="btn btn-danger btn-sm" @onclick="WithdrawAsync" disabled="@_acting">
                                         @(_acting ? "Procesando..." : "Retirar reclamación")
                                     </button>
                                 }
                             </div>
 
                             <hr class="my-3" />
-
-                            <AuthorizeView>
-                                <Authorized>
+                            @if (!IsModerationView){
                                     <button class="btn btn-danger w-100 btn-sm" @onclick="() => ShowReport = true">
                                         Reportar chat
                                     </button>
-                                </Authorized>
-                            </AuthorizeView>
+                            }
                         </div>
                     </div>
 
@@ -192,7 +190,8 @@ else
                     {
                         <div class="card border-warning">
                             <div class="card-body">
-                                <h5 class="mb-2">Moderación</h5>
+                                <h5 class="text-center mb-2">Moderación</h5>
+                                <hr class="my-2" />
 
                                 @if (!string.IsNullOrWhiteSpace(ModError))
                                 {
@@ -201,21 +200,26 @@ else
 
                                 @if (Report is not null)
                                 {
-                                    <div class="fw-semibold">Reporte</div>
-                                    <div class="mt-1">@Report.Reason</div>
+                                    <div>Reporte: @Report.Reason</div>
                                     <div class="text-muted small">
-                                        Estado: <strong>@Labels.ReportStatusLabel(Report.Status)</strong> · Denunciante: <strong>@Report.ReporterEmail</strong>
+                                        Estado: <strong>@Labels.ReportStatusLabel(Report.Status)</strong>
+                                    </div>
+                                    <div class="text-muted small">
+                                        Denunciante: <strong>@Report.ReporterEmail</strong>
                                     </div>
 
                                     @if (Report.Status == ReportStatus.ActionTaken && !string.IsNullOrWhiteSpace(Report.BlockedEmail))
                                     {
                                         <div class="text-muted small mt-1">
-                                            Bloqueado: <strong>@Report.BlockedEmail</strong>
-                                            @if (Report.LockoutEndUtc is not null)
-                                            {
-                                                <span> · Hasta: @Report.LockoutEndUtc.Value.ToLocalTime()</span>
-                                            }
+                                            Usuario bloqueado: <strong>@Report.BlockedEmail</strong>
+                       
                                         </div>
+                                        @if (Report.LockoutEndUtc is not null)
+                                        {
+                                            <div class="text-muted small">
+                                                Hasta: <strong>@Report.LockoutEndUtc.Value.ToLocalTime()</strong>
+                                            </div>
+                                        }
                                     }
                                 }
 
@@ -224,8 +228,14 @@ else
                                     <hr class="my-3" />
 
                                     <div class="row g-2">
+                                        <button type="button"
+                                                class="btn btn-secondary btn-sm"
+                                                disabled="@(ModBusy)"
+                                                @onclick="DismissReport">
+                                            Desestimar
+                                        </button>
                                         <div class="col-4">
-                                            <label class="form-label small mb-1">Días</label>
+                                            <label class="form-label small mb-1">Días de bloq.</label>
                                             <input class="form-control" type="number" min="1" @bind="BlockDays" />
                                         </div>
                                         <div class="col-8">
@@ -235,18 +245,13 @@ else
                                     </div>
 
                                     <div class="d-grid gap-2 mt-2">
-                                        <button type="button"
-                                                class="btn btn-outline-secondary btn-sm"
-                                                disabled="@(ModBusy)"
-                                                @onclick="DismissReport">
-                                            Dismiss
-                                        </button>
+                               
 
                                         <button type="button"
                                                 class="btn btn-danger btn-sm"
                                                 disabled="@(ModBusy)"
                                                 @onclick="BlockUserFromReport">
-                                            Block user
+                                            Bloquear usuario
                                         </button>
                                     </div>
                                 }

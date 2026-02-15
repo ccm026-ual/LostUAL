@@ -156,10 +156,7 @@
 
                                         <td class="text-center">
                                             @(string.IsNullOrWhiteSpace(c.ClaimantEmail) ? c.ClaimantUserId : c.ClaimantEmail)
-                                            @if (c.HasUnread)
-                                            {
-                                                <span class="badge bg-warning text-dark ms-2">Nuevo</span>
-                                            }
+                                           
                                         </td>
 
                                         <td class="text-center">
@@ -173,6 +170,12 @@
                                         <td class="text-center">
                                             @if (c.ConversationId is int convId)
                                             {
+                                                @if (c.HasUnread)
+                                                {
+                                                    <span class="badge bg-warning text-dark ms-2 me-2">Nuevo</span>
+
+                                                }
+
                                                 <button class="btn btn-sm @(c.HasUnread ? "btn-primary" : "btn-outline-primary")"
                                                         @onclick="@(() => Nav.NavigateTo($"/conversations/{convId}"))">
                                                     Abrir chat
