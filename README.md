@@ -37,5 +37,24 @@ dotnet run --project .\LostUAL.Api\LostUAL.Api.csproj
 dotnet run --project .\LostUAL.Web\LostUAL.Web.csproj
 ```
 La Api se encuentra en https://localhost:7178. Swagger se encuentra disponible en https://localhost:7178/swagger  
-La Web se encuentra disponible en https://localhost:7211
+La Web se encuentra disponible en https://localhost:7211  
+
+## Uso  
+**Acceso:**  
+
+La aplicación ya cuenta con una pequeña base de datos con usuarios y posts creados para comprobar la funcionalidad. Las credenciales para los usuarios y roles son:  
+
+| Rol | Email | Contraseña |
+|----------|:----------:|:----------:|
+| Usuario        |    usuario{N}@ual.es (donde N es número entero)     | Usuario1!        |
+| Admin/mod        | admin_lostual@ual.es        | Admin123!        |
+
+Si se prefiere partir de una base de datos vacía con solo el Admin/mod definido, ejecutar desde una ventana de comandos:
+
+```
+dotnet ef database drop -p LostUAL.Data -s LostUAL.Api  
+dotnet ef database update -p LostUAL.Data -s LostUAL.Api  
+```
+
+
 
