@@ -17,7 +17,8 @@ public static class DbSeeder
                 new Category { Name = "Carteras" },
                 new Category { Name = "Electrónica" },
                 new Category { Name = "Mochilas" },
-                new Category { Name = "Documentación" }
+                new Category { Name = "Documentación" },
+                new Category { Name = "Otro"}
             );
         }
 
@@ -25,10 +26,12 @@ public static class DbSeeder
         {
             db.Locations.AddRange(
                 new CampusLocation { Name = "Biblioteca" },
-                new CampusLocation { Name = "Cafetería central" },
+                new CampusLocation { Name = "Cafetería" },
                 new CampusLocation { Name = "Aulario" },
-                new CampusLocation { Name = "Edificio de Ingeniería" },
-                new CampusLocation { Name = "Parada de bus" }
+                new CampusLocation { Name = "Exteriores" },
+                new CampusLocation { Name = "Autobús" },
+                new CampusLocation { Name = "Laboratorio"},
+                new CampusLocation { Name = "Otro"}
             );
         }
 

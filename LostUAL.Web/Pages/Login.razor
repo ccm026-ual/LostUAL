@@ -96,7 +96,9 @@
 
     private sealed class LoginVm
     {
-        [Required, EmailAddress] public string Email { get; set; } = "";
-        [Required] public string Password { get; set; } = "";
+        [Required(ErrorMessage = "El email es obligatorio.")]
+        public string Email { get; set; } = "";
+        [Required(ErrorMessage = "La contraseña es obligatoria.")]
+        public string Password { get; set; } = "";
     }
 }

@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "Proyecto",
+    "Projects": [
+      {
+        "Path": "LostUAL.Api\\LostUAL.Api.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "LostUAL.Web\\LostUAL.Web.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]
