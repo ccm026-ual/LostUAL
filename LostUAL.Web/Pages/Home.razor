@@ -11,6 +11,8 @@
 
 <AuthorizeView>
     <Authorized>
+        <div class="container py-3">
+        
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
             <div>
                 <h3 class="mb-1">Posts publicados</h3>
@@ -155,16 +157,24 @@
             </div>
 
 
-            <LoginGateModal Show="_showGate" Item="_selected" OnClose="CloseGate" />
 
+            <LoginGateModal Show="_showGate" Item="_selected" OnClose="CloseGate" />
+       
         }
+        </div>
     </Authorized>
+    
     <NotAuthorized>
-        <div class="container">
+
+        <div class="container py-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                <div>
+                    <h3 class="mb-1"> Últimos posts publicados</h3>
+                </div>
+            </div>
             <div class="row g-4 align-items-stretch" style="min-height: 70vh;">
                 <div class="col-12 col-lg-7">
-                    <h3 class="mb-3">Últimos posts publicados</h3>
-                    <hr class="mt-0 mb-4" />
+                    
 
                     @if (_preview is null)
                     {
@@ -181,7 +191,7 @@
                             {
                                 <div class="card">
                                     <div class="card-body">
-                                        <h5 class="card-title mb-1">@p.Title</h5>
+                                        <h5 class="card-title mb-1"><strong>@p.Title</strong></h5>
 
                                         <p class="card-text mb-2">@p.Description</p>
 

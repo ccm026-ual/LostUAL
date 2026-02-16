@@ -14,15 +14,6 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
 
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-    <div>
-        <h3 class="mb-1">Chat</h3>
-        <div class="text-muted small">
-            Recuerda mantener el respeto
-        </div>
-    </div>
-</div>
-
 @if (_loading)
 {
     <p>Cargando...</p>
@@ -34,6 +25,14 @@ else if (!string.IsNullOrWhiteSpace(_error))
 else
 {
     <div class="container py-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+            <div>
+                <h3 class="mb-1">Chat</h3>
+                <div class="text-muted small">
+                    Recuerda mantener el respeto
+                </div>
+            </div>
+        </div>
 
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
             <div>

@@ -6,14 +6,7 @@
 @using System.Net.Http.Json
 @using System.Net.Http.Headers
 
-<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
-    <div>
-        <h3 class="mb-1">Nuevo post</h3>
-        <div class="text-muted small">
-            Publica un nuevo post. Recuerda no incluir información privada y/o sensible en público.
-        </div>
-    </div>
-</div>
+
 
 @if (categories is null || locations is null)
 {
@@ -24,7 +17,15 @@ else
     <EditForm Model="model" OnValidSubmit="HandleSubmit">
         <DataAnnotationsValidator />
         <ValidationSummary />
-
+        <div class="container py-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+                <div>
+                    <h3 class="mb-1">Nuevo post</h3>
+                    <div class="text-muted small">
+                        Publica un nuevo post. Recuerda no incluir información privada y/o sensible en público.
+                    </div>
+                </div>
+            </div>
         <div class="mb-3">
             <label class="form-label">Tipo</label>
             <select class="form-select" @bind="model.Type">
@@ -102,7 +103,9 @@ else
         {
             <div class="alert alert-info mt-3">@message</div>
         }
+        </div>
     </EditForm>
+    
 }
 
 @code {
