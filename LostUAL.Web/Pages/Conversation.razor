@@ -1,13 +1,14 @@
 ﻿@page "/conversations/{ConversationId:int}"
 @attribute [Authorize]
 
+@using System.Net
 @using System.Net.Http.Json
 @using LostUAL.Contracts.Chat
 @using LostUAL.Contracts.Claims
 @using LostUAL.Web.Shared
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Security.Claims
-@using System.IdentityModel.Tokens.Jwt;
+@using System.IdentityModel.Tokens.Jwt
 @inject NavigationManager Nav
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthStateProvider
@@ -350,7 +351,30 @@ else
 
         try
         {
-            var resp = await Http.GetFromJsonAsync<GetMessagesResponse>($"/api/conversations/{ConversationId}/messages");
+            var res = await Http.GetAsync($"/api/conversations/{ConversationId}/messages");
+
+            if (res.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _error = "No tienes permiso para ver esta conversación.";
+                return;
+            }
+
+            if (res.StatusCode == HttpStatusCode.NotFound)
+            {
+                _error = "Esta conversación no existe o ya no está disponible.";
+                return;
+            }
+
+            if (!res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadAsStringAsync();
+                _error = string.IsNullOrWhiteSpace(body)
+                    ? $"Error {(int)res.StatusCode}"
+                    : body;
+                return;
+            }
+
+            var resp = await res.Content.ReadFromJsonAsync<GetMessagesResponse>();
             if (resp is null)
             {
                 _error = "Respuesta inválida del servidor.";
@@ -368,11 +392,6 @@ else
             _ownerConfirmedAtUtc = resp.OwnerConfirmedAtUtc;
             _claimantConfirmedAtUtc = resp.ClaimantConfirmedAtUtc;
             _autoResolveAtUtc = resp.AutoResolveAtUtc;
-
-        }
-        catch (HttpRequestException ex)
-        {
-            _error = ex.Message;
         }
         catch (Exception ex)
         {
@@ -380,7 +399,7 @@ else
         }
         finally
         {
-            _scrollToBottomPending = true;
+            _scrollToBottomPending = string.IsNullOrWhiteSpace(_error);
             _loading = false;
         }
     }
@@ -622,10 +641,18 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_scrollToBottomPending)
+        if (_scrollToBottomPending && string.IsNullOrWhiteSpace(_error))
         {
             _scrollToBottomPending = false;
-            await JS.InvokeVoidAsync("lostualScrollToBottom", _chatMessagesRef);
+
+            try
+            {
+                await JS.InvokeVoidAsync("lostualScrollToBottom", _chatMessagesRef);
+            }
+            catch
+            {
+      
+            }
         }
     }
 

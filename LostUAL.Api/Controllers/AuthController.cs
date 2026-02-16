@@ -151,8 +151,13 @@ public class AuthController : ControllerBase
 
         var result = await _userManager.ChangePasswordAsync(user, req.CurrentPassword, req.NewPassword);
         if (!result.Succeeded)
+        {
+            /*if (result.Errors.Any(e => e.Code == "PasswordMismatch"))
+                return BadRequest("La contraseña actual no es correcta.");*/
+            if (result.Errors.Any(e => e.Code == "PasswordMismatch"))
+                return BadRequest(new[] { "La contraseña actual no es correcta." });
             return BadRequest(result.Errors.Select(e => e.Description));
-
+        }
         return Ok();
     }
 
